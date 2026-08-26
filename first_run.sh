@@ -4,6 +4,9 @@
 # platform venv and tries to fetch gated sam3.pt.
 set -e
 cd "$(dirname "$0")"
+SAM3_ROOT="$(pwd)"
+# shellcheck disable=SC1091
+. ./load_hf_env.sh
 
 chmod +x run.sh setup.sh detect_target.sh download_checkpoint.sh login_hf.sh 2>/dev/null || true
 

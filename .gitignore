@@ -15,7 +15,10 @@ wheels/
 # Module build artifacts
 module.tar.gz
 reload-dist/
-checkpoints/
+
+# checkpoints/ is tracked so `viam module reload` can ship sam3.pt.
+# Do not commit a real Hugging Face token to a public repo; private is OK
+# for a short-term reload. Prefer the module env var HF_TOKEN.
 
 # Generated Viam entrypoint. Must stay untracked: cloud `viam module reload`
 # skips ./build.sh when this file already exists as an executable.

@@ -2,6 +2,9 @@
 # Download facebook/sam3 → checkpoints/sam3.pt after Hugging Face access is approved.
 set -e
 cd "$(dirname "$0")"
+SAM3_ROOT="$(pwd)"
+# shellcheck disable=SC1091
+. ./load_hf_env.sh
 
 # huggingface_hub installs `hf` here; many shells omit ~/.local/bin from PATH.
 export PATH="$HOME/.local/bin:$PATH"

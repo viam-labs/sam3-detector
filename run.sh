@@ -2,6 +2,9 @@
 # Start the module. Packaged builds use the PyInstaller binary; local
 # `viam module reload` on the robot uses .venv after ./setup.sh.
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+SAM3_ROOT="$SCRIPT_DIR"
+# shellcheck disable=SC1091
+. "$SCRIPT_DIR/load_hf_env.sh"
 
 # Required for AMD GPUs not in PyTorch's official ROCm support list. NVIDIA needs
 # nothing here: the CUDA build carries its own runtime and finds the driver itself.

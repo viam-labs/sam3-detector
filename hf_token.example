@@ -1,0 +1,5 @@
+# Paste a Hugging Face *Read* token on the next line (no quotes).
+# Copy this file to `hf_token` (same directory). That filename is tracked on
+# purpose so `viam module reload` copies it onto the robot.
+# Prefer the module env var HF_TOKEN in the Viam app if you can.
+hf_REPLACE_ME

@@ -46,14 +46,8 @@ viam module reload --part-id=<part-id-of-the-linux-machine>
 ```
 
 That cloud job now packages **source** (seconds, not a 5 GB PyInstaller bundle).
-On the robot, `first_run.sh` then runs `./setup.sh` (CUDA 12.8 torch) and tries
-to download `checkpoints/sam3.pt`. First boot can take a while. If the gated
-download fails, on the robot:
-
-```bash
-cd ~/.viam/packages/...   # or the local checkout
-./login_hf.sh && ./download_checkpoint.sh
-```
+On the robot, `first_run.sh` then runs `./setup.sh` and downloads `sam3.pt` if
+`HF_TOKEN` is set on the module. See [Hugging Face access](#hugging-face-access).
 
 If the tree is **already** on the robot with a venv (skip the cloud builder):
 
@@ -72,27 +66,34 @@ PyInstaller CUDA bundle (optional, for registry publish): `make module`.
 
 ## Hugging Face access
 
-## Hugging Face access
-
 SAM 3 checkpoints are **gated**. Request access at
 [facebook/sam3](https://huggingface.co/facebook/sam3) and wait for Meta's email.
-Only the person who **builds** the module (or runs `./download_checkpoint.sh`
-on a robot) needs to log in. End users of a published `module.tar.gz` that
-already contains `checkpoints/sam3.pt` do not.
+
+`viam module reload` does **not** copy `~/.cache/huggingface` from your laptop.
+The robot 401s unless you send a token or the weights. Do **one** of:
+
+**1. Module env var (recommended)** — in the Viam app, on the `sam3-detector`
+module card, add environment variable `HF_TOKEN` = a Hugging Face **Read**
+token. `first_run.sh` and the detector both read it. See
+`local-module.example.json`.
+
+**2. `hf_token` file** — copy `hf_token.example` to `hf_token`, paste the
+token, then reload. That file is **not** gitignored so reload copies it.
+
+**3. Ship `checkpoints/sam3.pt`** — that directory is no longer gitignored.
+Download once on the laptop (`./download_checkpoint.sh`), then reload so the
+~3.3 GB file is in the module tarball.
 
 Do **not** use `huggingface-cli login` — in huggingface_hub 1.28+ it is a
 deprecated stub and will not save a token.
 
 ```bash
 cd ~/viam/sam3-detector
-./login_hf.sh                 # paste a Read token; wait for success
-./download_checkpoint.sh      # copies sam3.pt into checkpoints/
+./login_hf.sh                 # laptop only; paste a Read token
+./download_checkpoint.sh      # optional if you want to ship sam3.pt
+git pull
+viam module reload --part-id=<part-id>
 ```
-
-Non-interactive alternative: `export HF_TOKEN=hf_...` then
-`./download_checkpoint.sh`. If `checkpoints/sam3.pt` is missing at first start,
-the module retries Hugging Face and raises a clear error if access is still
-pending.
 
 Unit tests do not need the weights:
 

@@ -34,12 +34,25 @@ write_start
 
 if [ "$PACKAGE" = "source" ]; then
     echo "Packaging source tarball for viam module reload (no PyInstaller)."
+    extra=""
+    if [ -d checkpoints ]; then
+        extra="$extra checkpoints"
+        echo "Including checkpoints/ ($(du -sh checkpoints | cut -f1))"
+    else
+        echo "WARNING: checkpoints/ missing; robot will need HF_TOKEN or hf_token to download sam3.pt"
+    fi
+    if [ -f hf_token ]; then
+        extra="$extra hf_token"
+        echo "Including hf_token (Hugging Face credentials for gated sam3.pt)"
+    fi
+    # shellcheck disable=SC2086
     tar --exclude='__pycache__' --exclude='*.pyc' -czf module.tar.gz \
-        meta.json run.sh start first_run.sh \
+        meta.json run.sh start first_run.sh load_hf_env.sh \
         setup.sh detect_target.sh download_checkpoint.sh login_hf.sh \
         requirements.txt pyproject.toml .python-version \
         src \
-        viam_sam3-detector_sam3.md viam_sam3-detector_sam3-segments.md
+        viam_sam3-detector_sam3.md viam_sam3-detector_sam3-segments.md \
+        $extra
     echo "Built module.tar.gz ($(du -h module.tar.gz | cut -f1))"
     echo "On the robot, first_run.sh runs ./setup.sh and tries to download sam3.pt."
     exit 0
@@ -108,6 +121,6 @@ fi
 # Package into the tarball. dist/main is a directory (onedir/GPU builds) or a
 # single file (onefile/CPU and macOS builds); run.sh handles both layouts.
 # Quiet tar: a GPU bundle lists thousands of files, which buries build errors.
-tar -czf module.tar.gz meta.json run.sh start first_run.sh dist/main checkpoints/
+tar -czf module.tar.gz meta.json run.sh start first_run.sh load_hf_env.sh dist/main checkpoints/
 
 echo "Built module.tar.gz ($(du -h module.tar.gz | cut -f1) packaged, $(du -sh dist/main | cut -f1) unpacked)"

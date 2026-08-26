@@ -29,13 +29,12 @@ GATED_CHECKPOINT_HELP = f"""
 SAM 3 weights are gated on Hugging Face. Until Meta approves your request,
 this module cannot load the detector — that is expected, not a bug.
 
-After you get the approval email:
-  1. ./login_hf.sh
-     (or: export PATH="$HOME/.local/bin:$PATH" && hf auth login)
-     (or: export HF_TOKEN=hf_... from https://huggingface.co/settings/tokens)
-  2. ./download_checkpoint.sh
-  3. Restart the Viam module. It will use checkpoints/{SAM3_CKPT_NAME}.
-
+After you get the approval email, do one of:
+  A. Set HF_TOKEN on the Viam module (CONFIGURE → module → Environment), then
+     restart / reload. first_run.sh and SAM3 both read that env var.
+  B. Put a Read token in ./hf_token (copy hf_token.example) so reload copies it.
+  C. ./login_hf.sh && ./download_checkpoint.sh, then reload with checkpoints/sam3.pt
+     (checkpoints/ is not gitignored).
 Request / status: {HF_ACCESS_URL}
 """.strip()
 
@@ -150,6 +149,33 @@ def find_bundled_checkpoint() -> Optional[str]:
     return None
 
 
+def apply_hf_token_from_files() -> None:
+    """Export HF_TOKEN from ./hf_token if the process has no token yet.
+
+    `viam module reload` does not copy ~/.cache/huggingface from the laptop.
+    A token file in the module tree (or HF_TOKEN on the module env) does.
+    """
+    if os.environ.get("HF_TOKEN") or os.environ.get("HUGGING_FACE_HUB_TOKEN"):
+        return
+    for d in checkpoint_search_dirs():
+        for name in ("hf_token", ".hf_token"):
+            path = os.path.join(d, name)
+            if not os.path.isfile(path):
+                continue
+            token = ""
+            with open(path, encoding="utf-8") as fh:
+                for line in fh:
+                    line = line.strip()
+                    if line and not line.startswith("#"):
+                        token = line
+                        break
+            if token:
+                os.environ["HF_TOKEN"] = token
+                os.environ["HUGGING_FACE_HUB_TOKEN"] = token
+                LOGGER.info(f"Loaded Hugging Face token from {path}")
+                return
+
+
 def resolve_checkpoint_path() -> Optional[str]:
     """Locate a local checkpoint, or return None so the SAM3 builder will
     download from Hugging Face (`facebook/sam3`).
@@ -157,6 +183,7 @@ def resolve_checkpoint_path() -> Optional[str]:
     SAM 3 weights are gated. If they are not bundled and Hugging Face auth is
     missing, model load will fail with a clear 401/403 from huggingface_hub.
     """
+    apply_hf_token_from_files()
     bundled = find_bundled_checkpoint()
     if bundled:
         LOGGER.debug(f"Using bundled SAM3 checkpoint: {bundled}")
@@ -174,6 +201,7 @@ def download_checkpoint(dest_dir: Optional[str] = None) -> str:
 
     Raises GatedCheckpointError while the Hugging Face request is still pending.
     """
+    apply_hf_token_from_files()
     from huggingface_hub import hf_hub_download
 
     if dest_dir is None:

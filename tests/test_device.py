@@ -1,9 +1,12 @@
 """GPU detection helpers — same behavior as sam2-detector."""
 
+import os
+
 from models.common import (
     SAM3_CKPT_NAME,
     SAM3_MODEL_ID,
     GatedCheckpointError,
+    apply_hf_token_from_files,
     checkpoint_search_dirs,
     find_bundled_checkpoint,
     is_gated_access_error,
@@ -38,6 +41,17 @@ def test_model_id_is_public_sam3_not_sam2():
     assert SAM3_CKPT_NAME == "sam3.pt"
 
 
+def test_hf_token_file_in_cwd_is_loaded(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("HF_TOKEN", raising=False)
+    monkeypatch.delenv("HUGGING_FACE_HUB_TOKEN", raising=False)
+    (tmp_path / "hf_token").write_text("# comment\nhf_test_token_for_unit_test\n")
+    apply_hf_token_from_files()
+    assert os.environ.get("HF_TOKEN") == "hf_test_token_for_unit_test"
+    monkeypatch.delenv("HF_TOKEN", raising=False)
+    monkeypatch.delenv("HUGGING_FACE_HUB_TOKEN", raising=False)
+
+
 def test_checkpoint_search_includes_repo_and_cwd(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     dirs = checkpoint_search_dirs()
@@ -59,7 +73,7 @@ def test_gated_repo_error_is_explained():
     assert is_gated_access_error(err)
     wrapped = wrap_checkpoint_error(err)
     assert isinstance(wrapped, GatedCheckpointError)
-    assert "download_checkpoint.sh" in str(wrapped)
+    assert "HF_TOKEN" in str(wrapped)
     assert "huggingface.co/facebook/sam3" in str(wrapped)
 
 

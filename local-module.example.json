@@ -3,7 +3,10 @@
     {
       "type": "local",
       "name": "sam3-detector",
-      "executable_path": "/home/viam/viam/sam3-detector/run.sh"
+      "executable_path": "/home/viam/viam/sam3-detector/run.sh",
+      "env": {
+        "HF_TOKEN": "hf_REPLACE_ME"
+      }
     }
   ],
   "services": [
