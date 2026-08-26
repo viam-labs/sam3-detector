@@ -5,6 +5,46 @@ cd "$(dirname "$0")"
 SAM3_MODEL="${SAM3_MODEL:-facebook/sam3}"
 SAM3_CKPT="${SAM3_CKPT:-sam3.pt}"
 
+# Default: source tarball for `viam module reload` (fast). PyInstaller CUDA
+# bundles are opt-in — they are huge and the Viam cloud reload path does not
+# have a Hugging Face token for sam3.pt.
+#   ./build.sh                  # source + generated `start` entrypoint
+#   SAM3_PACKAGE=pyinstaller ./build.sh
+#   ./build.sh --bundle
+PACKAGE="${SAM3_PACKAGE:-source}"
+for arg in "$@"; do
+    case "$arg" in
+        --bundle|--pyinstaller) PACKAGE=pyinstaller ;;
+        --source) PACKAGE=source ;;
+    esac
+done
+
+write_start() {
+    # meta.json entrypoint. Must not be committed: Viam cloud reload treats an
+    # executable entrypoint already in the repo as a pre-built Go binary, skips
+    # ./build.sh, and then fails because /tmp/module.tar.gz does not exist.
+    cat > start <<'EOF'
+#!/bin/sh
+exec "$(cd "$(dirname "$0")" && pwd)/run.sh" "$@"
+EOF
+    chmod +x start
+}
+
+write_start
+
+if [ "$PACKAGE" = "source" ]; then
+    echo "Packaging source tarball for viam module reload (no PyInstaller)."
+    tar --exclude='__pycache__' --exclude='*.pyc' -czf module.tar.gz \
+        meta.json run.sh start first_run.sh \
+        setup.sh detect_target.sh download_checkpoint.sh login_hf.sh \
+        requirements.txt pyproject.toml .python-version \
+        src \
+        viam_sam3-detector_sam3.md viam_sam3-detector_sam3-segments.md
+    echo "Built module.tar.gz ($(du -h module.tar.gz | cut -f1))"
+    echo "On the robot, first_run.sh runs ./setup.sh and tries to download sam3.pt."
+    exit 0
+fi
+
 # Resolve the target once and export it, so setup.sh and main.spec cannot
 # disagree about which GPU runtime is being installed versus packaged.
 . ./detect_target.sh
@@ -12,7 +52,7 @@ SAM3_BUILD_TARGET="$(detect_sam3_target)"
 export SAM3_BUILD_TARGET
 # main.spec also reads SAM2_BUILD_TARGET as a fallback alias.
 export SAM2_BUILD_TARGET="$SAM3_BUILD_TARGET"
-echo "Building for target: $SAM3_BUILD_TARGET"
+echo "Building PyInstaller bundle for target: $SAM3_BUILD_TARGET"
 
 # Ensure dependencies are installed (creates venv, installs correct torch).
 ./setup.sh
@@ -68,6 +108,6 @@ fi
 # Package into the tarball. dist/main is a directory (onedir/GPU builds) or a
 # single file (onefile/CPU and macOS builds); run.sh handles both layouts.
 # Quiet tar: a GPU bundle lists thousands of files, which buries build errors.
-tar -czf module.tar.gz meta.json run.sh dist/main checkpoints/
+tar -czf module.tar.gz meta.json run.sh start first_run.sh dist/main checkpoints/
 
 echo "Built module.tar.gz ($(du -h module.tar.gz | cut -f1) packaged, $(du -sh dist/main | cut -f1) unpacked)"

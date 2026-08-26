@@ -104,4 +104,11 @@ elif torch.version.cuda:
 print(f"torch {torch.__version__} ({flavor})")
 EOF
 
+# Generated Viam entrypoint (meta.json). Not committed — see build.sh.
+cat > start <<'EOF'
+#!/bin/sh
+exec "$(cd "$(dirname "$0")" && pwd)/run.sh" "$@"
+EOF
+chmod +x start
+
 echo "Setup complete (platform: $PLATFORM)"

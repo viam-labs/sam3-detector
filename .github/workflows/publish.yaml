@@ -22,9 +22,13 @@ jobs:
   # per-platform input — a matrix would re-run the same cloud build and fail
   # with "version already has platforms".
   #
-  # Cloud builders get no GitHub Actions env vars. detect_target.sh picks the
-  # PyTorch flavor from the build machine: linux/amd64 → CUDA, darwin/arm64 →
-  # MPS, linux/arm64 → CPU.
+# Cloud builders get no GitHub Actions env vars. detect_target.sh picks the
+# PyTorch flavor from the build machine: linux/amd64 → CUDA, darwin/arm64 →
+# MPS, linux/arm64 → CPU.
+#
+# meta.json ./build.sh defaults to a source tarball so `viam module reload`
+# finishes. For a PyInstaller CUDA registry artifact, set SAM3_PACKAGE in
+# the cloud build environment or run `make module` locally.
   publish:
     needs: validate-tag
     runs-on: ubuntu-latest

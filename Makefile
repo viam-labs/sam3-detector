@@ -3,12 +3,11 @@
 # Default checkpoint: facebook/sam3 (sam3.pt). Weights are gated on Hugging
 # Face — request access, then ./login_hf.sh (or HF_TOKEN) before `make module`.
 #
-# Local reload on NVIDIA Linux (vino3) does not need this Makefile:
-#   ./setup.sh && ./download_checkpoint.sh
-# then point a local Viam module at ./run.sh.
+# `viam module reload` runs ./build.sh which packages SOURCE (not PyInstaller).
+# first_run.sh on the robot then runs ./setup.sh.
 #
 # Usage:
-#   make module                          # Build binary, download checkpoint, create tarball
+#   make module                          # PyInstaller CUDA/ROCm/CPU bundle + tarball
 #   make clean                           # Remove all build artifacts
 #   make test                            # Unit tests (no weights required)
 #
@@ -20,10 +19,10 @@
 
 clean:
 	rm -rf dist/ build/
-	rm -f module.tar.gz
+	rm -f module.tar.gz start
 
 module:
-	SAM3_MODEL=$(or $(SAM3_MODEL),facebook/sam3) ./build.sh
+	SAM3_MODEL=$(or $(SAM3_MODEL),facebook/sam3) SAM3_PACKAGE=pyinstaller ./build.sh
 
 test:
 	PYTHONPATH=src python -m pytest tests -q

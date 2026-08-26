@@ -17,6 +17,10 @@ module.tar.gz
 reload-dist/
 checkpoints/
 
+# Generated Viam entrypoint. Must stay untracked: cloud `viam module reload`
+# skips ./build.sh when this file already exists as an executable.
+/start
+
 # Local debug artifacts produced by scripts in debug/
 # (the scripts themselves are tracked; their outputs are not)
 debug_*.pcd

@@ -32,7 +32,8 @@ def test_meta_json_registers_both_models():
     assert "viam:sam3-detector:sam3" in models
     assert "viam:sam3-detector:sam3-segments" in models
     assert meta["module_id"] == "viam:sam3-detector"
-    assert meta["entrypoint"] == "run.sh"
+    assert meta["entrypoint"] == "start"
+    assert meta["first_run"] == "first_run.sh"
 
 
 def test_image_propagation_uses_text_prompt_not_a_box():

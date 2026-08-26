@@ -2,7 +2,7 @@
   "$schema": "https://dl.viam.dev/module.schema.json",
   "module_id": "viam:sam3-detector",
   "visibility": "public",
-  "url": "https://github.com/viam-modules/sam3-detector/",
+  "url": "https://github.com/michael-lee-dev/sam3-detector",
   "description": "Modular vision service: SAM3 open-vocabulary text-prompt detector",
   "models": [
     {
@@ -18,11 +18,11 @@
   ],
   "applications": null,
   "markdown_link": "README.md",
-  "entrypoint": "run.sh",
-  "first_run": "",
+  "entrypoint": "start",
+  "first_run": "first_run.sh",
   "build": {
     "build": "./build.sh",
-    "setup": "./setup.sh",
+    "setup": "/bin/true",
     "path": "module.tar.gz",
     "arch": [
       "linux/amd64",

@@ -32,29 +32,45 @@ See [sam3-segments model documentation](viam_sam3-detector_sam3-segments.md) for
 
 ## Run on vino3 (NVIDIA Linux)
 
-Clone this repo onto the NVIDIA machine (not a Mac, and not vino2/ROCm):
+`viam module reload` (cloud) failed when `run.sh` was the entrypoint: Viam saw
+that executable already in the repo, **skipped `./build.sh`**, uploaded no
+`module.tar.gz`, and aborted. The `go.sum` cache lines are a red herring (this
+is not a Go module).
+
+Pull this fix, then from `~/viam/sam3-detector` on your laptop (or the robot):
 
 ```bash
-mkdir -p ~/viam
-git clone <this-repo-url> ~/viam/sam3-detector
 cd ~/viam/sam3-detector
-./setup.sh                    # linux-cuda: torch 2.9.1+cu128
-./login_hf.sh                 # paste a Read token; wait for success
-./download_checkpoint.sh      # checkpoints/sam3.pt (~3.3 GB)
+git pull
+viam module reload --part-id=<part-id-of-the-linux-machine>
 ```
 
-`run.sh` starts from `.venv` when `dist/` is missing, so you do **not** need
-`./build.sh` / PyInstaller for a local reload.
+That cloud job now packages **source** (seconds, not a 5 GB PyInstaller bundle).
+On the robot, `first_run.sh` then runs `./setup.sh` (CUDA 12.8 torch) and tries
+to download `checkpoints/sam3.pt`. First boot can take a while. If the gated
+download fails, on the robot:
 
-1. In the Viam app, add a **local** module whose executable is
-   `~/viam/sam3-detector/run.sh` (see `local-module.example.json`).
-2. Add a vision service `viam:sam3-detector:sam3` with `camera_name` and
-   `label` (for example `"stemless wine glass"`).
-3. Reload from that machine — for example `viam module reload` in this
-   directory. Do not copy this cloud workspace's `.venv` onto vino3; always
-   run `./setup.sh` there.
+```bash
+cd ~/.viam/packages/...   # or the local checkout
+./login_hf.sh && ./download_checkpoint.sh
+```
 
-Packaged tarball (optional, slow, ~5 GB unpacked CUDA bundle): `./build.sh`.
+If the tree is **already** on the robot with a venv (skip the cloud builder):
+
+```bash
+cd ~/viam/sam3-detector
+./setup.sh && ./login_hf.sh && ./download_checkpoint.sh
+viam module reload-local --part-id=<part-id> --no-build
+```
+
+Or add a **local** module whose executable is `~/viam/sam3-detector/run.sh`
+(see `local-module.example.json`) and restart that module in the app.
+
+Do not copy a `.venv` from a Mac or from this cloud workspace onto vino3.
+
+PyInstaller CUDA bundle (optional, for registry publish): `make module`.
+
+## Hugging Face access
 
 ## Hugging Face access
 
@@ -113,11 +129,12 @@ cd ~/viam/sam3-detector
 PYTHONPATH=src python -m pytest tests -q
 ```
 
-`meta.json` entrypoint is `run.sh`. After `./setup.sh` that script execs
-`.venv/bin/python src/main.py`. After `./build.sh` it prefers `dist/main`.
+`meta.json` entrypoint is generated `start` (gitignored) so cloud reload
+actually runs `./build.sh`. After `./setup.sh` that wrapper execs
+`.venv/bin/python src/main.py`. After `make module` it prefers `dist/main`.
 
 ```bash
-./run.sh                            # same entrypoint viam-server uses
+./run.sh                            # same launcher viam-server uses
 ```
 
 ## Build targets
@@ -138,7 +155,7 @@ machine that has only an NVIDIA driver and no CUDA toolkit installed. To build t
 small CPU-only variant instead:
 
 ```bash
-SAM3_BUILD_TARGET=linux-cpu ./build.sh
+SAM3_PACKAGE=pyinstaller SAM3_BUILD_TARGET=linux-cpu ./build.sh
 ```
 
 ## Testing against a robot
