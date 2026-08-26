@@ -32,13 +32,28 @@ See [sam3-segments model documentation](viam_sam3-detector_sam3-segments.md) for
 
 ## Hugging Face access
 
-SAM 3 checkpoints are gated. Before the first run:
+SAM 3 checkpoints are **gated**. Submitting a request at
+[facebook/sam3](https://huggingface.co/facebook/sam3) and waiting for Meta's
+email is the normal path — the detector cannot run until that lands.
 
-1. Request access at [facebook/sam3](https://huggingface.co/facebook/sam3)
-2. `huggingface-cli login` or set `HF_TOKEN`
-3. `./build.sh` will copy `sam3.pt` into `checkpoints/` when download succeeds
+**While you wait**, the module itself is ready: config, `set_label`, GPU
+selection, and unit tests do not need the weights.
 
-If the checkpoint is not bundled, the module downloads it at first start using the same token.
+```bash
+cd ~/viam/sam3-detector
+PYTHONPATH=src python -m pytest tests -q
+```
+
+**After the approval email:**
+
+```bash
+huggingface-cli login          # or: export HF_TOKEN=hf_...
+./download_checkpoint.sh       # copies sam3.pt into checkpoints/
+```
+
+Then start (or restart) the Viam module. If `checkpoints/sam3.pt` is missing it
+will try Hugging Face again at first start and raise a clear error if access is
+still pending.
 
 ## Device selection
 

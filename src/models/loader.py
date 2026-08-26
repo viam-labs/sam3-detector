@@ -12,7 +12,11 @@ from typing import Any, Optional
 
 from viam.logging import getLogger
 
-from models.common import resolve_checkpoint_path, select_device
+from models.common import (
+    resolve_checkpoint_path,
+    select_device,
+    wrap_checkpoint_error,
+)
 
 LOGGER = getLogger(__name__)
 
@@ -27,13 +31,16 @@ def load_image_processor(device: str, confidence_threshold: float = 0.5):
         f"Loading SAM3 image model (checkpoint={checkpoint_path or 'huggingface'}) "
         f"on {device}"
     )
-    model = build_sam3_image_model(
-        checkpoint_path=checkpoint_path,
-        load_from_HF=checkpoint_path is None,
-        device=device,
-        eval_mode=True,
-        enable_segmentation=True,
-    )
+    try:
+        model = build_sam3_image_model(
+            checkpoint_path=checkpoint_path,
+            load_from_HF=checkpoint_path is None,
+            device=device,
+            eval_mode=True,
+            enable_segmentation=True,
+        )
+    except Exception as err:
+        raise wrap_checkpoint_error(err) from err
     return Sam3Processor(
         model, device=device, confidence_threshold=confidence_threshold
     )
@@ -60,11 +67,14 @@ class DeviceAwareSam3VideoPredictor:
         self._base = Sam3BasePredictor()
         self._base.async_loading_frames = False
         self._base.video_loader_type = "cv2"
-        self._base.model = build_sam3_video_model(
-            checkpoint_path=checkpoint_path,
-            load_from_HF=checkpoint_path is None,
-            device=device,
-        ).eval()
+        try:
+            self._base.model = build_sam3_video_model(
+                checkpoint_path=checkpoint_path,
+                load_from_HF=checkpoint_path is None,
+                device=device,
+            ).eval()
+        except Exception as err:
+            raise wrap_checkpoint_error(err) from err
         # Expose session bookkeeping used by Sam3BasePredictor helpers.
         self._all_inference_states = self._base._all_inference_states
 

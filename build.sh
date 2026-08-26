@@ -52,26 +52,16 @@ $PYTHON -m PyInstaller --clean main.spec
 # and we still package the binary; the module will retry at runtime.
 mkdir -p checkpoints
 set +e
-$PYTHON - "$SAM3_MODEL" "$SAM3_CKPT" <<'EOF'
-import os
-import shutil
-import sys
-
-from huggingface_hub import hf_hub_download
-
-repo, ckpt = sys.argv[1], sys.argv[2]
-hf_hub_download(repo, "config.json")
-path = hf_hub_download(repo, ckpt)
-dest = os.path.join("checkpoints", ckpt)
-shutil.copy(path, dest)
-print(f"Downloaded {dest}")
+PYTHONPATH=src $PYTHON - <<'EOF'
+from models.common import download_checkpoint
+print(download_checkpoint("checkpoints"))
 EOF
 ckpt_status=$?
 set -e
 if [ "$ckpt_status" -ne 0 ]; then
     echo "WARNING: could not download ${SAM3_CKPT} from Hugging Face."
-    echo "Request access at https://huggingface.co/facebook/sam3 and set HF_TOKEN,"
-    echo "then re-run ./build.sh. The module will also try to download at first start."
+    echo "This is expected while your facebook/sam3 access request is pending."
+    echo "After approval:  huggingface-cli login && ./download_checkpoint.sh"
 fi
 
 # Package into the tarball. dist/main is a directory (onedir/GPU builds) or a

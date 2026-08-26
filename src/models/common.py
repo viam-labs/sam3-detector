@@ -23,6 +23,50 @@ SAM3_MODEL_ID = "facebook/sam3"
 SAM3_CKPT_NAME = "sam3.pt"
 SAM3_CFG_NAME = "config.json"
 
+HF_ACCESS_URL = "https://huggingface.co/facebook/sam3"
+
+GATED_CHECKPOINT_HELP = f"""
+SAM 3 weights are gated on Hugging Face. Until Meta approves your request,
+this module cannot load the detector — that is expected, not a bug.
+
+After you get the approval email:
+  1. huggingface-cli login
+     (or export HF_TOKEN=hf_... with a token from https://huggingface.co/settings/tokens)
+  2. From this repo, run:  ./download_checkpoint.sh
+  3. Restart the Viam module. It will use checkpoints/{SAM3_CKPT_NAME}.
+
+Request / status: {HF_ACCESS_URL}
+""".strip()
+
+
+class GatedCheckpointError(RuntimeError):
+    """Raised when facebook/sam3 cannot be downloaded because access is pending."""
+
+
+def is_gated_access_error(err: BaseException) -> bool:
+    """True for Hugging Face 401/403 / gated-repo failures (pending approval)."""
+    if type(err).__name__ == "GatedRepoError":
+        return True
+    text = str(err).lower()
+    markers = (
+        "gated",
+        "cannot access gated",
+        "agree to share",
+        "401 client error",
+        "403 client error",
+        "401 unauthorized",
+        "403 forbidden",
+        "access to this model",
+    )
+    return any(m in text for m in markers)
+
+
+def wrap_checkpoint_error(err: BaseException) -> BaseException:
+    """Rewrite a raw HF download failure into an actionable error."""
+    if is_gated_access_error(err):
+        return GatedCheckpointError(f"{GATED_CHECKPOINT_HELP}\n\nOriginal error: {err}")
+    return err
+
 
 def torch_build_info() -> Dict[str, str]:
     """Describe the bundled torch build. Useful for diagnosing CPU fallback remotely."""
@@ -118,9 +162,35 @@ def resolve_checkpoint_path() -> Optional[str]:
         return bundled
     LOGGER.info(
         f"No bundled {SAM3_CKPT_NAME}; SAM3 will download {SAM3_MODEL_ID} "
-        f"from Hugging Face (requires access + `HF_TOKEN` or `huggingface-cli login`)"
+        f"from Hugging Face (requires an approved request + HF_TOKEN). "
+        f"See {HF_ACCESS_URL}"
     )
     return None
+
+
+def download_checkpoint(dest_dir: Optional[str] = None) -> str:
+    """Download sam3.pt into dest_dir (default: <repo>/checkpoints).
+
+    Raises GatedCheckpointError while the Hugging Face request is still pending.
+    """
+    from huggingface_hub import hf_hub_download
+
+    if dest_dir is None:
+        dest_dir = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "..", "..", "checkpoints"
+        )
+    os.makedirs(dest_dir, exist_ok=True)
+    try:
+        hf_hub_download(SAM3_MODEL_ID, SAM3_CFG_NAME)
+        src = hf_hub_download(SAM3_MODEL_ID, SAM3_CKPT_NAME)
+    except Exception as err:
+        raise wrap_checkpoint_error(err) from err
+    dest = os.path.abspath(os.path.join(dest_dir, SAM3_CKPT_NAME))
+    import shutil
+
+    shutil.copy(src, dest)
+    LOGGER.info(f"Downloaded SAM3 checkpoint to {dest}")
+    return dest
 
 
 def viam_image_to_numpy(image: ViamImage) -> np.ndarray:
