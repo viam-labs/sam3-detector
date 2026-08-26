@@ -30,38 +30,53 @@ Uses the same text prompt to get precise masks, then projects only those pixels 
 
 See [sam3-segments model documentation](viam_sam3-detector_sam3-segments.md) for configuration details.
 
-## Hugging Face access
+## Run on vino3 (NVIDIA Linux)
 
-SAM 3 checkpoints are **gated**. Submitting a request at
-[facebook/sam3](https://huggingface.co/facebook/sam3) and waiting for Meta's
-email is the normal path — the detector cannot run until that lands.
-
-Clone this repo onto the machine that will run the module (for example
-`~/viam/sam3-detector`). The tree is not created automatically on the robot.
-
-**After the approval email**, on that machine, login first and wait until it
-succeeds. Do not chain login and download on one line — `huggingface-cli login`
-is a deprecated stub and will skip auth.
+Clone this repo onto the NVIDIA machine (not a Mac, and not vino2/ROCm):
 
 ```bash
-export PATH="$HOME/.local/bin:$PATH"
+mkdir -p ~/viam
+git clone <this-repo-url> ~/viam/sam3-detector
 cd ~/viam/sam3-detector
-hf auth login                 # paste a Read token, wait for "Login successful"
+./setup.sh                    # linux-cuda: torch 2.9.1+cu128
+./login_hf.sh                 # paste a Read token; wait for success
+./download_checkpoint.sh      # checkpoints/sam3.pt (~3.3 GB)
+```
+
+`run.sh` starts from `.venv` when `dist/` is missing, so you do **not** need
+`./build.sh` / PyInstaller for a local reload.
+
+1. In the Viam app, add a **local** module whose executable is
+   `~/viam/sam3-detector/run.sh` (see `local-module.example.json`).
+2. Add a vision service `viam:sam3-detector:sam3` with `camera_name` and
+   `label` (for example `"stemless wine glass"`).
+3. Reload from that machine — for example `viam module reload` in this
+   directory. Do not copy this cloud workspace's `.venv` onto vino3; always
+   run `./setup.sh` there.
+
+Packaged tarball (optional, slow, ~5 GB unpacked CUDA bundle): `./build.sh`.
+
+## Hugging Face access
+
+SAM 3 checkpoints are **gated**. Request access at
+[facebook/sam3](https://huggingface.co/facebook/sam3) and wait for Meta's email.
+Only the person who **builds** the module (or runs `./download_checkpoint.sh`
+on a robot) needs to log in. End users of a published `module.tar.gz` that
+already contains `checkpoints/sam3.pt` do not.
+
+Do **not** use `huggingface-cli login` — in huggingface_hub 1.28+ it is a
+deprecated stub and will not save a token.
+
+```bash
+cd ~/viam/sam3-detector
+./login_hf.sh                 # paste a Read token; wait for success
 ./download_checkpoint.sh      # copies sam3.pt into checkpoints/
 ```
 
-If `hf` is not on `PATH` after install, use:
-
-```bash
-python3 -m huggingface_hub.cli.hf auth login
-# or:
-export HF_TOKEN=hf_...
-./download_checkpoint.sh
-```
-
-Then start (or restart) the Viam module. If `checkpoints/sam3.pt` is missing it
-will try Hugging Face again at first start and raise a clear error if access is
-still pending.
+Non-interactive alternative: `export HF_TOKEN=hf_...` then
+`./download_checkpoint.sh`. If `checkpoints/sam3.pt` is missing at first start,
+the module retries Hugging Face and raises a clear error if access is still
+pending.
 
 Unit tests do not need the weights:
 
@@ -98,11 +113,11 @@ cd ~/viam/sam3-detector
 PYTHONPATH=src python -m pytest tests -q
 ```
 
-Run as a local Viam module with `run.sh` after `./build.sh`, or from source:
+`meta.json` entrypoint is `run.sh`. After `./setup.sh` that script execs
+`.venv/bin/python src/main.py`. After `./build.sh` it prefers `dist/main`.
 
 ```bash
-cd src
-../.venv/bin/python main.py
+./run.sh                            # same entrypoint viam-server uses
 ```
 
 ## Build targets

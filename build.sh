@@ -61,7 +61,8 @@ set -e
 if [ "$ckpt_status" -ne 0 ]; then
     echo "WARNING: could not download ${SAM3_CKPT} from Hugging Face."
     echo "This is expected while your facebook/sam3 access request is pending."
-    echo "After approval:  huggingface-cli login && ./download_checkpoint.sh"
+    echo "After approval, run these separately (do not use huggingface-cli login):"
+    echo "  ./login_hf.sh && ./download_checkpoint.sh"
 fi
 
 # Package into the tarball. dist/main is a directory (onedir/GPU builds) or a

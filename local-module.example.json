@@ -1,0 +1,22 @@
+{
+  "modules": [
+    {
+      "type": "local",
+      "name": "sam3-detector",
+      "executable_path": "/home/viam/viam/sam3-detector/run.sh"
+    }
+  ],
+  "services": [
+    {
+      "name": "vision-sam3",
+      "api": "rdk:service:vision",
+      "model": "viam:sam3-detector:sam3",
+      "attributes": {
+        "camera_name": "REPLACE_CAMERA_NAME",
+        "label": "stemless wine glass",
+        "confidence_threshold": 0.5
+      },
+      "depends_on": ["REPLACE_CAMERA_NAME"]
+    }
+  ]
+}

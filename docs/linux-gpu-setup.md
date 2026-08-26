@@ -7,10 +7,16 @@ sam2-detector module (same GPU detection path).
 
 ## NVIDIA (CUDA)
 
+This is the path for NVIDIA Linux machines such as **vino3**. `./setup.sh`
+selects `linux-cuda` (CUDA 12.8 wheels) on x86_64 Linux when ROCm is not
+installed.
+
 The published `linux/amd64` module bundles CUDA 12.8 PyTorch along with the CUDA
 runtime libraries it needs, so the machine requires **only an NVIDIA driver** —
 there is no need to install the CUDA toolkit. Official SAM 3 inference is
-documented against CUDA 12.6+.
+documented against CUDA 12.6+. For a local `viam module reload` from source,
+run `./setup.sh` on the robot itself so `.venv` matches this GPU; do not copy a
+venv from a different machine.
 
 ### Requirements
 

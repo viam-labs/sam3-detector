@@ -27,7 +27,13 @@ def test_checkpoint_search_includes_repo_and_cwd(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     dirs = checkpoint_search_dirs()
     assert any(str(tmp_path) == d or str(tmp_path) in d for d in dirs)
-    assert find_bundled_checkpoint() is None
+    found = find_bundled_checkpoint()
+    # A developer checkout may already have checkpoints/sam3.pt; cwd must not
+    # be the only place we look, and we must not invent a file under tmp_path.
+    if found is None:
+        return
+    assert found.endswith(f"checkpoints/{SAM3_CKPT_NAME}")
+    assert str(tmp_path) not in found
 
 
 def test_gated_repo_error_is_explained():
