@@ -11,7 +11,10 @@ dependencies = [
     "pillow",
     "opencv-python-headless",
     "sam3 @ git+https://github.com/facebookresearch/sam3.git",
-    "huggingface-hub>=1.8.0",
+    "huggingface-hub>=0.30.0",
+    "einops",
+    "pycocotools",
+    "psutil",
     "pyinstaller>=6.19.0",
 ]
 # NOTE: torch and torchvision are installed by setup.sh with the correct
