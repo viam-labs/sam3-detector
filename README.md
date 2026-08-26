@@ -39,15 +39,15 @@ email is the normal path — the detector cannot run until that lands.
 Clone this repo onto the machine that will run the module (for example
 `~/viam/sam3-detector`). The tree is not created automatically on the robot.
 
-**After the approval email**, on that machine:
+**After the approval email**, on that machine, login first and wait until it
+succeeds. Do not chain login and download on one line — `huggingface-cli login`
+is a deprecated stub and will skip auth.
 
 ```bash
-# In this cloud terminal, the CLI lives in ~/.local/bin (not on PATH by default):
 export PATH="$HOME/.local/bin:$PATH"
-hf auth login
-# or: ./login_hf.sh
-
-./download_checkpoint.sh    # copies sam3.pt into checkpoints/
+cd ~/viam/sam3-detector
+hf auth login                 # paste a Read token, wait for "Login successful"
+./download_checkpoint.sh      # copies sam3.pt into checkpoints/
 ```
 
 If `hf` is not on `PATH` after install, use:
