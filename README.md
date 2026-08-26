@@ -42,13 +42,10 @@ Clone this repo onto the machine that will run the module (for example
 **After the approval email**, on that machine:
 
 ```bash
-mkdir -p ~/viam
-git clone <this-repo-url> ~/viam/sam3-detector
-cd ~/viam/sam3-detector
-
-# Current Hugging Face CLI is `hf` (huggingface-cli is the old name).
-python3 -m pip install -U "huggingface_hub[cli]"
-hf auth login    # paste a token from https://huggingface.co/settings/tokens
+# In this cloud terminal, the CLI lives in ~/.local/bin (not on PATH by default):
+export PATH="$HOME/.local/bin:$PATH"
+hf auth login
+# or: ./login_hf.sh
 
 ./download_checkpoint.sh    # copies sam3.pt into checkpoints/
 ```
