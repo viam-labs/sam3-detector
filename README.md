@@ -36,24 +36,42 @@ SAM 3 checkpoints are **gated**. Submitting a request at
 [facebook/sam3](https://huggingface.co/facebook/sam3) and waiting for Meta's
 email is the normal path — the detector cannot run until that lands.
 
-**While you wait**, the module itself is ready: config, `set_label`, GPU
-selection, and unit tests do not need the weights.
+Clone this repo onto the machine that will run the module (for example
+`~/viam/sam3-detector`). The tree is not created automatically on the robot.
+
+**After the approval email**, on that machine:
 
 ```bash
+mkdir -p ~/viam
+git clone <this-repo-url> ~/viam/sam3-detector
 cd ~/viam/sam3-detector
-PYTHONPATH=src python -m pytest tests -q
+
+# Current Hugging Face CLI is `hf` (huggingface-cli is the old name).
+python3 -m pip install -U "huggingface_hub[cli]"
+hf auth login    # paste a token from https://huggingface.co/settings/tokens
+
+./download_checkpoint.sh    # copies sam3.pt into checkpoints/
 ```
 
-**After the approval email:**
+If `hf` is not on `PATH` after install, use:
 
 ```bash
-huggingface-cli login          # or: export HF_TOKEN=hf_...
-./download_checkpoint.sh       # copies sam3.pt into checkpoints/
+python3 -m huggingface_hub.cli.hf auth login
+# or:
+export HF_TOKEN=hf_...
+./download_checkpoint.sh
 ```
 
 Then start (or restart) the Viam module. If `checkpoints/sam3.pt` is missing it
 will try Hugging Face again at first start and raise a clear error if access is
 still pending.
+
+Unit tests do not need the weights:
+
+```bash
+cd ~/viam/sam3-detector
+PYTHONPATH=src python -m pytest tests -q
+```
 
 ## Device selection
 

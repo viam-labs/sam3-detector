@@ -5,12 +5,23 @@ cd "$(dirname "$0")"
 
 if [ -x .venv/bin/python ]; then
     PYTHON=".venv/bin/python"
-else
+elif command -v python3 >/dev/null 2>&1; then
     PYTHON="python3"
+else
+    echo "ERROR: python3 not found. Install Python 3.12+ or create .venv with ./setup.sh" >&2
+    exit 1
+fi
+
+if ! "$PYTHON" -c "import huggingface_hub" 2>/dev/null; then
+    echo "Installing huggingface_hub into this Python ($PYTHON)..."
+    "$PYTHON" -m pip install -U "huggingface_hub[cli]"
 fi
 
 if [ -z "$HF_TOKEN" ] && [ -z "$HUGGING_FACE_HUB_TOKEN" ]; then
-    echo "Tip: if huggingface-cli login has not been run, export HF_TOKEN=hf_..."
+    echo "Not logged in via HF_TOKEN. If download fails with 401/403, run:"
+    echo "  $PYTHON -m pip install -U 'huggingface_hub[cli]'"
+    echo "  hf auth login"
+    echo "  # (old name: huggingface-cli login)"
 fi
 
 echo "Downloading facebook/sam3 (sam3.pt). This is several GB."

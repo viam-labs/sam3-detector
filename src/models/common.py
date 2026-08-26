@@ -30,10 +30,11 @@ SAM 3 weights are gated on Hugging Face. Until Meta approves your request,
 this module cannot load the detector — that is expected, not a bug.
 
 After you get the approval email:
-  1. huggingface-cli login
-     (or export HF_TOKEN=hf_... with a token from https://huggingface.co/settings/tokens)
-  2. From this repo, run:  ./download_checkpoint.sh
-  3. Restart the Viam module. It will use checkpoints/{SAM3_CKPT_NAME}.
+  1. pip install -U "huggingface_hub[cli]"
+  2. hf auth login
+     (or export HF_TOKEN=hf_... from https://huggingface.co/settings/tokens)
+  3. From this repo, run:  ./download_checkpoint.sh
+  4. Restart the Viam module. It will use checkpoints/{SAM3_CKPT_NAME}.
 
 Request / status: {HF_ACCESS_URL}
 """.strip()
