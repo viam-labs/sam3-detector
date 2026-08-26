@@ -1,0 +1,33 @@
+{
+  "$schema": "https://dl.viam.dev/module.schema.json",
+  "module_id": "viam:sam3-detector",
+  "visibility": "public",
+  "url": "https://github.com/viam-modules/sam3-detector/",
+  "description": "Modular vision service: SAM3 open-vocabulary text-prompt detector",
+  "models": [
+    {
+      "api": "rdk:service:vision",
+      "model": "viam:sam3-detector:sam3",
+      "markdown_link": "viam_sam3-detector_sam3.md"
+    },
+    {
+      "api": "rdk:service:vision",
+      "model": "viam:sam3-detector:sam3-segments",
+      "markdown_link": "viam_sam3-detector_sam3-segments.md"
+    }
+  ],
+  "applications": null,
+  "markdown_link": "README.md",
+  "entrypoint": "run.sh",
+  "first_run": "",
+  "build": {
+    "build": "./build.sh",
+    "setup": "./setup.sh",
+    "path": "module.tar.gz",
+    "arch": [
+      "linux/amd64",
+      "linux/arm64",
+      "darwin/arm64"
+    ]
+  }
+}

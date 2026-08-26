@@ -1,0 +1,41 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# macOS
+.DS_Store
+
+# Module build artifacts
+module.tar.gz
+reload-dist/
+checkpoints/
+
+# Local debug artifacts produced by scripts in debug/
+# (the scripts themselves are tracked; their outputs are not)
+debug_*.pcd
+debug_*.png
+debug/debug_*.pcd
+debug/debug_*.png
+
+# Captured screenshots / point cloud snapshots saved next to the repo
+cam-*.png
+sam2-segmenter-*.png
+sam2_segments_*.png
+sam3-segmenter-*.png
+sam3_segments_*.png
+
+# Local test output
+test_output/
+test_raw_frames/
+test_vision_output/
+test_*.mp4
+
+# Scratch notes from the cloud agent
+agent-tools/

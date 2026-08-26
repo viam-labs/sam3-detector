@@ -1,0 +1,25 @@
+[project]
+name = "viam-sam3-detector"
+version = "0.1.0"
+description = "Viam vision module using Meta SAM3 for open-vocabulary text-prompt detection, tracking, and 3D segmentation"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "viam-sdk==0.80.0",
+    "typing-extensions",
+    "numpy>=1.26,<2",
+    "pillow",
+    "opencv-python-headless",
+    "sam3 @ git+https://github.com/facebookresearch/sam3.git",
+    "huggingface-hub>=1.8.0",
+    "pyinstaller>=6.19.0",
+]
+# NOTE: torch and torchvision are installed by setup.sh with the correct
+# platform-specific index (standard PyPI for macOS, CUDA for NVIDIA GPUs,
+# ROCm for AMD GPUs, CPU otherwise).
+# They are intentionally excluded here so uv sync doesn't overwrite them.
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+]

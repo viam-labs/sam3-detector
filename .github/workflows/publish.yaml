@@ -1,0 +1,42 @@
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  validate-tag:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Validate tag format
+      run: |
+        TAG="${{ github.event.release.tag_name }}"
+        echo "Validating tag: $TAG"
+        if [[ $TAG =~ ^[0-9]+\.[0-9]+\.[0-9]+(-rc[0-9]*)?$ ]]; then
+          echo "Tag matches semver."
+        else
+          echo "Error: tag does not match semver"
+          exit 1
+        fi
+
+  # One call builds every platform listed in meta.json.build.arch. There is no
+  # per-platform input — a matrix would re-run the same cloud build and fail
+  # with "version already has platforms".
+  #
+  # Cloud builders get no GitHub Actions env vars. detect_target.sh picks the
+  # PyTorch flavor from the build machine: linux/amd64 → CUDA, darwin/arm64 →
+  # MPS, linux/arm64 → CPU.
+  publish:
+    needs: validate-tag
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Build and Publish
+        if: ${{ github.event_name != 'workflow_dispatch' }}
+        uses: viamrobotics/build-action@v1.6
+        with:
+          version: ${{ github.event.release.tag_name }}
+          ref: ${{ github.sha }}
+          key-id: ${{ secrets.viam_key_id }}
+          key-value: ${{ secrets.viam_key_value }}
+          token: ${{ github.token }}

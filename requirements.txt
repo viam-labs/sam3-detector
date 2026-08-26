@@ -1,0 +1,11 @@
+viam-sdk==0.80.0
+typing-extensions
+numpy>=1.26,<2
+pillow
+opencv-python-headless
+huggingface-hub
+pyinstaller
+sam3 @ git+https://github.com/facebookresearch/sam3.git
+# torch and torchvision are installed separately by setup.sh with the correct
+# platform-specific index URL (PyPI, CPU, CUDA, or ROCm). Listing them here
+# would let a resolve replace a GPU wheel with the CPU one from PyPI.

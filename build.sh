@@ -1,0 +1,82 @@
+#!/bin/sh
+set -e
+cd "$(dirname "$0")"
+
+SAM3_MODEL="${SAM3_MODEL:-facebook/sam3}"
+SAM3_CKPT="${SAM3_CKPT:-sam3.pt}"
+
+# Resolve the target once and export it, so setup.sh and main.spec cannot
+# disagree about which GPU runtime is being installed versus packaged.
+. ./detect_target.sh
+SAM3_BUILD_TARGET="$(detect_sam3_target)"
+export SAM3_BUILD_TARGET
+# main.spec also reads SAM2_BUILD_TARGET as a fallback alias.
+export SAM2_BUILD_TARGET="$SAM3_BUILD_TARGET"
+echo "Building for target: $SAM3_BUILD_TARGET"
+
+# Ensure dependencies are installed (creates venv, installs correct torch).
+./setup.sh
+
+# Use the venv python directly — never uv run/uv sync, which would
+# re-resolve torch from PyPI and overwrite the GPU-enabled version.
+PYTHON=".venv/bin/python"
+
+# Fail early if the installed torch does not match the target, rather than
+# shipping a CPU-only binary to a GPU platform.
+$PYTHON - "$SAM3_BUILD_TARGET" <<'EOF'
+import sys
+import torch
+
+target = sys.argv[1]
+if getattr(torch.version, "hip", None):
+    flavor = "linux-rocm"
+elif torch.version.cuda:
+    flavor = "linux-cuda"
+else:
+    flavor = "cpu-or-mps"
+print(f"Bundling torch {torch.__version__} (GPU support: {flavor})")
+
+if target in ("linux-cuda", "linux-rocm") and flavor != target:
+    raise SystemExit(
+        f"ERROR: target {target} needs a matching torch build, but the venv has "
+        f"{flavor} ({torch.__version__}). Delete .venv and re-run, or check the "
+        f"index URL in setup.sh."
+    )
+EOF
+
+# Build PyInstaller binary using spec file (includes GPU runtime hooks).
+$PYTHON -m PyInstaller --clean main.spec
+
+# Download the model checkpoint if Hugging Face access is available. SAM 3
+# weights are gated — without an accepted request + token the download fails
+# and we still package the binary; the module will retry at runtime.
+mkdir -p checkpoints
+set +e
+$PYTHON - "$SAM3_MODEL" "$SAM3_CKPT" <<'EOF'
+import os
+import shutil
+import sys
+
+from huggingface_hub import hf_hub_download
+
+repo, ckpt = sys.argv[1], sys.argv[2]
+hf_hub_download(repo, "config.json")
+path = hf_hub_download(repo, ckpt)
+dest = os.path.join("checkpoints", ckpt)
+shutil.copy(path, dest)
+print(f"Downloaded {dest}")
+EOF
+ckpt_status=$?
+set -e
+if [ "$ckpt_status" -ne 0 ]; then
+    echo "WARNING: could not download ${SAM3_CKPT} from Hugging Face."
+    echo "Request access at https://huggingface.co/facebook/sam3 and set HF_TOKEN,"
+    echo "then re-run ./build.sh. The module will also try to download at first start."
+fi
+
+# Package into the tarball. dist/main is a directory (onedir/GPU builds) or a
+# single file (onefile/CPU and macOS builds); run.sh handles both layouts.
+# Quiet tar: a GPU bundle lists thousands of files, which buries build errors.
+tar -czf module.tar.gz meta.json run.sh dist/main checkpoints/
+
+echo "Built module.tar.gz ($(du -h module.tar.gz | cut -f1) packaged, $(du -sh dist/main | cut -f1) unpacked)"
