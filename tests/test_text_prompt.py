@@ -1,10 +1,12 @@
 """DoCommand set_label / status without loading SAM3 weights."""
 
+import asyncio
+import threading
 from unittest.mock import MagicMock
 
 import numpy as np
 from models.boxes import RawDetection
-from models.sam3 import _to_viam
+from models.sam3 import Sam3, _to_viam
 
 
 def test_to_viam_detection_preserves_label():
@@ -63,3 +65,28 @@ def test_image_propagation_uses_text_prompt_not_a_box():
     assert dets[0].class_name == "stemless wine glass"
     assert dets[0].x_min == 10
     assert dets[0].y_max == 40
+
+
+def test_set_label_do_command_changes_prompt_without_a_box():
+    inst = Sam3.__new__(Sam3)
+    inst._lock = threading.Lock()
+    inst._label = "cup"
+    inst._detections = {0: ["stale"]}
+    inst._last_detections = ["stale"]
+
+    result = asyncio.run(
+        inst.do_command({"command": "set_label", "label": "stemless wine glass"})
+    )
+    assert inst._label == "stemless wine glass"
+    assert inst._detections == {}
+    assert inst._last_detections == []
+    assert "stemless wine glass" in result["status"]
+
+
+def test_set_label_rejects_empty():
+    inst = Sam3.__new__(Sam3)
+    inst._lock = threading.Lock()
+    inst._label = "cup"
+    result = asyncio.run(inst.do_command({"command": "set_label", "label": "  "}))
+    assert "error" in result
+    assert inst._label == "cup"

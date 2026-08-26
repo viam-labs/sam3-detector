@@ -1,5 +1,4 @@
 import os
-import sys
 
 # Must be set before torch is imported anywhere — required for AMD ROCm GPUs.
 if os.path.exists("/opt/rocm") and "HSA_OVERRIDE_GFX_VERSION" not in os.environ:

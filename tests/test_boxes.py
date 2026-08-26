@@ -45,7 +45,7 @@ def test_confidence_filter():
     scores = np.array([0.2, 0.8], dtype=np.float32)
     dets = detections_from_xyxy(boxes, scores, "cup", min_score=0.5)
     assert len(dets) == 1
-    assert dets[0].confidence == 0.8
+    assert abs(dets[0].confidence - 0.8) < 1e-6
 
 
 def test_empty_boxes():
@@ -61,7 +61,10 @@ def test_invalid_box_dropped():
 
 def test_rel_xywh_in_unit_interval():
     x0, y0, x1, y1 = rel_xywh_to_xyxy([0.1, 0.2, 0.25, 0.4], width=200, height=100)
-    assert (x0, y0, x1, y1) == (20.0, 20.0, 70.0, 60.0)
+    assert abs(x0 - 20.0) < 1e-9
+    assert abs(y0 - 20.0) < 1e-9
+    assert abs(x1 - 70.0) < 1e-9
+    assert abs(y1 - 60.0) < 1e-9
 
 
 def test_abs_xywh_when_values_exceed_one():
