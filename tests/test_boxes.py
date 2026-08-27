@@ -3,6 +3,7 @@
 import numpy as np
 
 from models.boxes import (
+    as_numpy,
     detections_from_processor_state,
     detections_from_video_outputs,
     detections_from_xyxy,
@@ -114,3 +115,13 @@ def test_video_outputs_relative_xywh():
     assert dets[0].y_min == 40
     assert dets[0].x_max == 30
     assert dets[0].y_max == 100
+
+
+def test_as_numpy_upcasts_bfloat16():
+    import pytest
+
+    torch = pytest.importorskip("torch")
+    t = torch.tensor([1.25, 2.5], dtype=torch.bfloat16)
+    arr = as_numpy(t)
+    assert arr.dtype == np.float32
+    assert abs(float(arr[0]) - 1.25) < 0.02

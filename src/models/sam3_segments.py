@@ -46,6 +46,7 @@ from models.boxes import RawDetection, detections_from_processor_state
 from models.common import (
     SAM3_MODEL_ID,
     numpy_to_pil,
+    sam3_amp_context,
     select_device,
     torch_build_info,
     viam_image_to_numpy,
@@ -233,8 +234,9 @@ class Sam3Segments(Vision, EasyResource):
         """Run SAM3 text prompt. Returns (detections, binary masks aligned 1:1)."""
         pil = numpy_to_pil(color_np)
         with self._lock:
-            state = self._processor.set_image(pil)
-            state = self._processor.set_text_prompt(self._label, state)
+            with sam3_amp_context(self._device):
+                state = self._processor.set_image(pil)
+                state = self._processor.set_text_prompt(self._label, state)
 
         dets = detections_from_processor_state(
             state, self._label, min_score=self._confidence_threshold
@@ -245,7 +247,7 @@ class Sam3Segments(Vision, EasyResource):
             import torch
 
             if isinstance(masks_t, torch.Tensor):
-                arr = masks_t.detach().cpu().numpy()
+                arr = masks_t.detach().float().cpu().numpy()
             else:
                 arr = np.asarray(masks_t)
             if arr.ndim == 2:

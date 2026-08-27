@@ -44,6 +44,13 @@ def as_numpy(value: Any) -> Optional[np.ndarray]:
         value = value.detach()
     if hasattr(value, "cpu"):
         value = value.cpu()
+    # Autocast / SAM3 fused kernels leave bfloat16 tensors; numpy has no bf16.
+    dtype_s = str(getattr(value, "dtype", ""))
+    if "bfloat16" in dtype_s or dtype_s.endswith("float16"):
+        if hasattr(value, "float"):
+            value = value.float()
+        elif hasattr(value, "astype"):
+            value = value.astype(np.float32)
     if hasattr(value, "numpy"):
         value = value.numpy()
     return np.asarray(value)

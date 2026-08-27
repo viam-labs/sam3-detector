@@ -81,3 +81,10 @@ def test_unrelated_error_is_not_rewritten():
     err = RuntimeError("CUDA out of memory")
     assert not is_gated_access_error(err)
     assert wrap_checkpoint_error(err) is err
+
+
+def test_sam3_amp_context_is_a_context_manager():
+    from models.common import sam3_amp_context
+
+    with sam3_amp_context("cpu"):
+        pass

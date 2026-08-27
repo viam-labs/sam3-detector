@@ -14,6 +14,7 @@ from viam.logging import getLogger
 
 from models.common import (
     resolve_checkpoint_path,
+    sam3_amp_context,
     select_device,
     wrap_checkpoint_error,
 )
@@ -85,7 +86,8 @@ class DeviceAwareSam3VideoPredictor:
         return self._base.handle_request(request)
 
     def handle_stream_request(self, request: dict):
-        yield from self._base.handle_stream_request(request)
+        with sam3_amp_context(self.device):
+            yield from self._base.handle_stream_request(request)
 
     def _add_prompt(self, request: dict) -> dict:
         """Same as Sam3BasePredictor.add_prompt, with device-aware autocast."""
@@ -132,13 +134,8 @@ class DeviceAwareSam3VideoPredictor:
         valid_params = set(sig.parameters.keys())
         filtered_kwargs = {k: v for k, v in kwargs.items() if k in valid_params}
 
-        autocast_device = "cuda" if self.device == "cuda" else "cpu"
-        dtype = torch.bfloat16 if self.device == "cuda" else torch.float32
         with torch.inference_mode():
-            if self.device in ("cuda", "cpu"):
-                with torch.autocast(device_type=autocast_device, dtype=dtype):
-                    frame_idx, outputs = self._base.model.add_prompt(**filtered_kwargs)
-            else:
+            with sam3_amp_context(self.device):
                 frame_idx, outputs = self._base.model.add_prompt(**filtered_kwargs)
         return {"frame_index": frame_idx, "outputs": outputs}
 

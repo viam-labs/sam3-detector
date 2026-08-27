@@ -128,6 +128,23 @@ def select_device() -> str:
     return "cpu"
 
 
+def sam3_amp_context(device: str):
+    """Run SAM3 CUDA forwards under bfloat16 autocast.
+
+    Recent SAM3 fused kernels (`sam3.perflib.fused.addmm_act`) cast activations
+    to bfloat16 while Linear weights stay float32. Without autocast that raises
+    `mat1 and mat2 must have the same dtype, but got BFloat16 and Float`.
+    Meta's image demos wrap `set_image` / `set_text_prompt` the same way.
+    """
+    from contextlib import nullcontext
+
+    import torch
+
+    if device == "cuda" and torch.cuda.is_available():
+        return torch.autocast(device_type="cuda", dtype=torch.bfloat16)
+    return nullcontext()
+
+
 def checkpoint_search_dirs() -> list:
     """Directories that may contain a bundled `checkpoints/sam3.pt`."""
     search_dirs = [

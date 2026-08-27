@@ -39,6 +39,7 @@ from models.boxes import RawDetection, detections_from_processor_state, detectio
 from models.common import (
     SAM3_MODEL_ID,
     numpy_to_pil,
+    sam3_amp_context,
     select_device,
     torch_build_info,
     viam_image_to_numpy,
@@ -211,8 +212,9 @@ class Sam3(Vision, EasyResource):
 
     def _run_image_on_array(self, image_np: np.ndarray) -> List[Detection]:
         pil = numpy_to_pil(image_np)
-        state = self._processor.set_image(pil)
-        state = self._processor.set_text_prompt(self._label, state)
+        with sam3_amp_context(self._device):
+            state = self._processor.set_image(pil)
+            state = self._processor.set_text_prompt(self._label, state)
         raw = detections_from_processor_state(
             state, self._label, min_score=self._confidence_threshold
         )
