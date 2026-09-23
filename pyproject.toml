@@ -5,7 +5,7 @@ description = "Viam vision module using Meta SAM3 for open-vocabulary text-promp
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "viam-sdk==0.80.0",
+    "viam-sdk==0.82.0",
     "typing-extensions",
     "numpy>=1.26,<2",
     "pillow",
