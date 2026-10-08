@@ -65,9 +65,10 @@ import shutil
 from huggingface_hub import hf_hub_download
 
 repo, ckpt, cfg = "facebook/sam3", "sam3.pt", "config.json"
+token = os.environ.get("HF_TOKEN") or os.environ.get("HUGGING_FACE_HUB_TOKEN")
 os.makedirs("checkpoints", exist_ok=True)
-hf_hub_download(repo, cfg)
-src = hf_hub_download(repo, ckpt)
+hf_hub_download(repo, cfg, token=token)
+src = hf_hub_download(repo, ckpt, token=token)
 dest = os.path.abspath(os.path.join("checkpoints", ckpt))
 shutil.copy(src, dest)
 print(f"Ready: {dest}")

@@ -23,19 +23,16 @@ LOGGER = getLogger(__name__)
 
 
 def load_image_processor(device: str, confidence_threshold: float = 0.5):
-    """Build a Sam3Processor on `device` using a bundled or HF checkpoint."""
+    """Build a Sam3Processor on `device` from the local sam3.pt checkpoint."""
     from sam3.model.sam3_image_processor import Sam3Processor
     from sam3.model_builder import build_sam3_image_model
 
     checkpoint_path = resolve_checkpoint_path()
-    LOGGER.debug(
-        f"Loading SAM3 image model (checkpoint={checkpoint_path or 'huggingface'}) "
-        f"on {device}"
-    )
+    LOGGER.debug(f"Loading SAM3 image model (checkpoint={checkpoint_path}) on {device}")
     try:
         model = build_sam3_image_model(
             checkpoint_path=checkpoint_path,
-            load_from_HF=checkpoint_path is None,
+            load_from_HF=False,
             device=device,
             eval_mode=True,
             enable_segmentation=True,
@@ -61,8 +58,7 @@ class DeviceAwareSam3VideoPredictor:
 
         checkpoint_path = resolve_checkpoint_path()
         LOGGER.debug(
-            f"Loading SAM3 video model (checkpoint={checkpoint_path or 'huggingface'}) "
-            f"on {device}"
+            f"Loading SAM3 video model (checkpoint={checkpoint_path}) on {device}"
         )
         self.device = device
         self._base = Sam3BasePredictor()
@@ -71,7 +67,7 @@ class DeviceAwareSam3VideoPredictor:
         try:
             self._base.model = build_sam3_video_model(
                 checkpoint_path=checkpoint_path,
-                load_from_HF=checkpoint_path is None,
+                load_from_HF=False,
                 device=device,
             ).eval()
         except Exception as err:

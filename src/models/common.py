@@ -30,12 +30,24 @@ SAM 3 weights are gated on Hugging Face. Until Meta approves your request,
 this module cannot load the detector — that is expected, not a bug.
 
 After you get the approval email, do one of:
-  A. Set HF_TOKEN on the Viam module (CONFIGURE → module → Environment), then
-     restart / reload. first_run.sh and SAM3 both read that env var.
+  A. Set HF_TOKEN on the Viam module (CONFIGURE → module → Environment).
+     first_run.sh downloads sam3.pt (resource startup cannot: 2-minute timeout).
+     If first_run already ran, delete .first_run_succeeded so it runs again.
   B. Put a Read token in ./hf_token (copy hf_token.example) so reload copies it.
   C. ./login_hf.sh && ./download_checkpoint.sh, then reload with checkpoints/sam3.pt
      (checkpoints/ is not gitignored).
 Request / status: {HF_ACCESS_URL}
+""".strip()
+
+MISSING_CHECKPOINT_HELP = f"""
+No local checkpoints/{SAM3_CKPT_NAME}. SAM3 weights are downloaded by
+first_run.sh using HF_TOKEN — not at module startup, which times out after
+2 minutes (VIAM_RESOURCE_CONFIGURATION_TIMEOUT).
+
+Set HF_TOKEN on the module, then delete the .first_run_succeeded marker next
+to the module so first_run.sh can fetch facebook/sam3. Or ship
+checkpoints/{SAM3_CKPT_NAME}.
+See {HF_ACCESS_URL}
 """.strip()
 
 
@@ -193,24 +205,18 @@ def apply_hf_token_from_files() -> None:
                 return
 
 
-def resolve_checkpoint_path() -> Optional[str]:
-    """Locate a local checkpoint, or return None so the SAM3 builder will
-    download from Hugging Face (`facebook/sam3`).
+def resolve_checkpoint_path() -> str:
+    """Return the path to a local sam3.pt. Never downloads from Hugging Face.
 
-    SAM 3 weights are gated. If they are not bundled and Hugging Face auth is
-    missing, model load will fail with a clear 401/403 from huggingface_hub.
+    A multi-GB Hub fetch cannot finish inside viam-server's 2-minute resource
+    configuration timeout; first_run.sh is responsible for the download.
     """
     apply_hf_token_from_files()
     bundled = find_bundled_checkpoint()
     if bundled:
         LOGGER.debug(f"Using bundled SAM3 checkpoint: {bundled}")
         return bundled
-    LOGGER.info(
-        f"No bundled {SAM3_CKPT_NAME}; SAM3 will download {SAM3_MODEL_ID} "
-        f"from Hugging Face (requires an approved request + HF_TOKEN). "
-        f"See {HF_ACCESS_URL}"
-    )
-    return None
+    raise FileNotFoundError(MISSING_CHECKPOINT_HELP)
 
 
 def download_checkpoint(dest_dir: Optional[str] = None) -> str:
@@ -226,9 +232,10 @@ def download_checkpoint(dest_dir: Optional[str] = None) -> str:
             os.path.dirname(os.path.abspath(__file__)), "..", "..", "checkpoints"
         )
     os.makedirs(dest_dir, exist_ok=True)
+    token = os.environ.get("HF_TOKEN") or os.environ.get("HUGGING_FACE_HUB_TOKEN")
     try:
-        hf_hub_download(SAM3_MODEL_ID, SAM3_CFG_NAME)
-        src = hf_hub_download(SAM3_MODEL_ID, SAM3_CKPT_NAME)
+        hf_hub_download(SAM3_MODEL_ID, SAM3_CFG_NAME, token=token)
+        src = hf_hub_download(SAM3_MODEL_ID, SAM3_CKPT_NAME, token=token)
     except Exception as err:
         raise wrap_checkpoint_error(err) from err
     dest = os.path.abspath(os.path.join(dest_dir, SAM3_CKPT_NAME))

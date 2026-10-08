@@ -1,7 +1,11 @@
 #!/bin/sh
 # Runs once on the robot after install / `viam module reload`.
 # Cloud reload ships source (not a PyInstaller bundle); this creates the
-# platform venv and tries to fetch gated sam3.pt.
+# platform venv and downloads gated sam3.pt using HF_TOKEN.
+#
+# The Hub download must happen here: viam-server only allows 2 minutes for
+# resource configuration (VIAM_RESOURCE_CONFIGURATION_TIMEOUT), which is too
+# short for a multi-GB checkpoint. first_run defaults to 1 hour.
 set -e
 cd "$(dirname "$0")"
 SAM3_ROOT="$(pwd)"
@@ -31,12 +35,17 @@ if [ -f checkpoints/sam3.pt ]; then
     exit 0
 fi
 
-if ./download_checkpoint.sh; then
-    exit 0
+if [ -z "$HF_TOKEN" ]; then
+    echo "ERROR: checkpoints/sam3.pt is missing and HF_TOKEN is not set." >&2
+    echo "Set HF_TOKEN on the module (CONFIGURE → Environment) so first_run can" >&2
+    echo "download facebook/sam3. Resource startup cannot download it (2-minute timeout)." >&2
+    echo "Alternatively: ./login_hf.sh && ./download_checkpoint.sh, then reload." >&2
+    exit 1
 fi
 
-echo "WARNING: checkpoints/sam3.pt is missing." >&2
-echo "On the robot:  ./login_hf.sh && ./download_checkpoint.sh" >&2
-echo "Or set HF_TOKEN in the module environment and re-run first_run." >&2
-# Do not fail: viam-server would refuse to start the module at all.
-exit 0
+# huggingface_hub's default HTTP timeouts are too short for a multi-GB file.
+export HF_HUB_DOWNLOAD_TIMEOUT="${HF_HUB_DOWNLOAD_TIMEOUT:-300}"
+export HF_HUB_ETAG_TIMEOUT="${HF_HUB_ETAG_TIMEOUT:-60}"
+
+echo "Downloading facebook/sam3 (sam3.pt) with HF_TOKEN during first_run..."
+./download_checkpoint.sh

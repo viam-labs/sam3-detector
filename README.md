@@ -46,8 +46,9 @@ viam module reload --part-id=<part-id-of-the-linux-machine>
 ```
 
 That cloud job now packages **source** (seconds, not a 5 GB PyInstaller bundle).
-On the robot, `first_run.sh` then runs `./setup.sh` and downloads `sam3.pt` if
-`HF_TOKEN` is set on the module. See [Hugging Face access](#hugging-face-access).
+On the robot, `first_run.sh` then runs `./setup.sh` and downloads `sam3.pt` with
+`HF_TOKEN` (module startup cannot: viam-server’s 2-minute resource timeout).
+See [Hugging Face access](#hugging-face-access).
 
 If the tree is **already** on the robot with a venv (skip the cloud builder):
 
@@ -74,8 +75,11 @@ The robot 401s unless you send a token or the weights. Do **one** of:
 
 **1. Module env var (recommended)** — in the Viam app, on the `sam3-detector`
 module card, add environment variable `HF_TOKEN` = a Hugging Face **Read**
-token. `first_run.sh` and the detector both read it. See
-`local-module.example.json`.
+token. `first_run.sh` reads it and downloads `sam3.pt` (the detector loads
+that local file only). See `local-module.example.json`.
+
+If first-run already succeeded without weights, delete the `.first_run_succeeded`
+marker next to the module so the script runs again.
 
 **2. `hf_token` file** — copy `hf_token.example` to `hf_token`, paste the
 token, then reload. That file is **not** gitignored so reload copies it.

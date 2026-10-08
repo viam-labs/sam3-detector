@@ -10,6 +10,7 @@ from models.common import (
     checkpoint_search_dirs,
     find_bundled_checkpoint,
     is_gated_access_error,
+    resolve_checkpoint_path,
     wrap_checkpoint_error,
 )
 from models.loader import video_predictor_supported
@@ -75,6 +76,35 @@ def test_gated_repo_error_is_explained():
     assert isinstance(wrapped, GatedCheckpointError)
     assert "HF_TOKEN" in str(wrapped)
     assert "huggingface.co/facebook/sam3" in str(wrapped)
+
+
+def test_resolve_checkpoint_path_uses_local_file(tmp_path, monkeypatch):
+    path = tmp_path / "sam3.pt"
+    path.write_bytes(b"fake")
+    monkeypatch.setattr("models.common.find_bundled_checkpoint", lambda: str(path))
+    assert resolve_checkpoint_path() == str(path)
+
+
+def test_resolve_checkpoint_path_does_not_download(monkeypatch):
+    monkeypatch.setattr("models.common.find_bundled_checkpoint", lambda: None)
+    try:
+        resolve_checkpoint_path()
+        raise AssertionError("expected FileNotFoundError")
+    except FileNotFoundError as err:
+        text = str(err)
+        assert "first_run" in text
+        assert "HF_TOKEN" in text
+        assert "2 minutes" in text
+
+
+def test_loader_never_downloads_from_huggingface():
+    import inspect
+
+    from models import loader
+
+    source = inspect.getsource(loader)
+    assert "load_from_HF=False" in source
+    assert "load_from_HF=checkpoint_path is None" not in source
 
 
 def test_unrelated_error_is_not_rewritten():

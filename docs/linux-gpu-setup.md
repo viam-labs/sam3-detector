@@ -79,7 +79,7 @@ Empty output means CPU-only inference.
 | `nvidia-smi` works but no device is visible to the module | `viam-server` runs the module as a different user; ensure it can access `/dev/nvidia*` |
 | Driver older than 525 | CUDA 12.8 wheels will not initialize; upgrade the driver |
 | Machine has both NVIDIA and ROCm installed | `detect_target.sh` prefers ROCm; set `SAM3_BUILD_TARGET=linux-cuda` explicitly |
-| Hugging Face 401/403 on first start | SAM 3 weights are gated. Request access at https://huggingface.co/facebook/sam3 and set `HF_TOKEN` |
+| Hugging Face 401/403 or missing `sam3.pt` | SAM 3 weights are gated. Request access at https://huggingface.co/facebook/sam3, set `HF_TOKEN`, and let `first_run.sh` download (not resource startup) |
 
 ## AMD ROCm
 

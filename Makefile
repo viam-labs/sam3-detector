@@ -4,7 +4,7 @@
 # Face — request access, then ./login_hf.sh (or HF_TOKEN) before `make module`.
 #
 # `viam module reload` runs ./build.sh which packages SOURCE (not PyInstaller).
-# first_run.sh on the robot then runs ./setup.sh.
+# first_run.sh on the robot then runs ./setup.sh and downloads sam3.pt.
 #
 # Usage:
 #   make module                          # PyInstaller CUDA/ROCm/CPU bundle + tarball

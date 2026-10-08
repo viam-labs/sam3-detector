@@ -17,3 +17,8 @@ def test_cloud_reload_entrypoint_is_not_committed_run_sh():
     assert "/start" in gitignore
     assert (ROOT / "first_run.sh").is_file()
     assert (ROOT / "run.sh").is_file()
+    first_run = (ROOT / "first_run.sh").read_text()
+    assert "HF_TOKEN" in first_run
+    assert "./download_checkpoint.sh" in first_run
+    assert "exit 1" in first_run
+    assert "if ./download_checkpoint.sh; then" not in first_run

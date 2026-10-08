@@ -39,7 +39,7 @@ if [ "$PACKAGE" = "source" ]; then
         extra="$extra checkpoints"
         echo "Including checkpoints/ ($(du -sh checkpoints | cut -f1))"
     else
-        echo "WARNING: checkpoints/ missing; robot will need HF_TOKEN or hf_token to download sam3.pt"
+        echo "WARNING: checkpoints/ missing; robot first_run.sh will download sam3.pt using HF_TOKEN"
     fi
     if [ -f hf_token ]; then
         extra="$extra hf_token"
@@ -54,7 +54,7 @@ if [ "$PACKAGE" = "source" ]; then
         viam_sam3-detector_sam3.md viam_sam3-detector_sam3-segments.md \
         $extra
     echo "Built module.tar.gz ($(du -h module.tar.gz | cut -f1))"
-    echo "On the robot, first_run.sh runs ./setup.sh and tries to download sam3.pt."
+    echo "On the robot, first_run.sh runs ./setup.sh and downloads sam3.pt with HF_TOKEN."
     exit 0
 fi
 
@@ -102,7 +102,7 @@ $PYTHON -m PyInstaller --clean main.spec
 
 # Download the model checkpoint if Hugging Face access is available. SAM 3
 # weights are gated — without an accepted request + token the download fails
-# and we still package the binary; the module will retry at runtime.
+# and we still package the binary; first_run.sh downloads on the robot.
 mkdir -p checkpoints
 set +e
 PYTHONPATH=src $PYTHON - <<'EOF'
