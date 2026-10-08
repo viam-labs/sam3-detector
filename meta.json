@@ -2,7 +2,7 @@
   "$schema": "https://dl.viam.dev/module.schema.json",
   "module_id": "viam:sam3-detector",
   "visibility": "public",
-  "url": "https://github.com/michael-lee-dev/sam3-detector",
+    "url": "https://github.com/viam-labs/sam3-detector",
   "description": "Modular vision service: SAM3 open-vocabulary text-prompt detector",
   "models": [
     {
