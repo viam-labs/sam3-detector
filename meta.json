@@ -22,7 +22,7 @@
   "first_run": "first_run.sh",
   "build": {
     "build": "./build.sh",
-    "setup": "/bin/true",
+    "setup": "/usr/bin/true",
     "path": "module.tar.gz",
     "arch": [
       "linux/amd64",

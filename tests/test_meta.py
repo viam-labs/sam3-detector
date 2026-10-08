@@ -11,6 +11,7 @@ def test_cloud_reload_entrypoint_is_not_committed_run_sh():
     assert meta["entrypoint"] == "start"
     assert meta["first_run"] == "first_run.sh"
     assert meta["build"]["build"] == "./build.sh"
+    assert meta["build"]["setup"] == "/usr/bin/true"
     assert meta["build"]["path"] == "module.tar.gz"
     assert not (ROOT / "start").exists() or "start" in (ROOT / ".gitignore").read_text()
     gitignore = (ROOT / ".gitignore").read_text()
