@@ -28,7 +28,7 @@ from viam.logging import getLogger
 from viam.media.video import ViamImage
 from viam.proto.app.robot import ComponentConfig
 from viam.proto.common import PointCloudObject, ResourceName
-from viam.proto.service.vision import Classification, Detection, GetPropertiesResponse
+from viam.proto.service.vision import Classification, Detection, Detection3D, GetPropertiesResponse
 from viam.resource.base import ResourceBase
 from viam.resource.easy_resource import EasyResource
 from viam.resource.types import Model, ModelFamily
@@ -377,6 +377,15 @@ class Sam3(Vision, EasyResource):
         timeout: Optional[float] = None,
     ) -> List[Classification]:
         raise NotImplementedError("classifications not supported")
+
+    async def get_detections_3d(
+        self,
+        camera_name: str,
+        *,
+        extra: Optional[Mapping[str, ValueTypes]] = None,
+        timeout: Optional[float] = None,
+    ) -> List[Detection3D]:
+        raise NotImplementedError("3D detections not supported")
 
     async def get_object_point_clouds(
         self,
