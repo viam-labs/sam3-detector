@@ -169,40 +169,7 @@ class Sam3Segments(Vision, EasyResource):
     ) -> Self:
         instance = super().new(config, dependencies)
         instance._lock = threading.Lock()
-        attrs = config.attributes.fields
-
-        instance._camera_name = attrs["camera_name"].string_value
-        instance._camera = dependencies[Camera.get_resource_name(instance._camera_name)]
-        instance._label = attrs["label"].string_value
-        LOGGER.info(f"Text prompt (label): {instance._label!r}")
-
-        instance._detector_name = ""
-        instance._detector = None
-        if "detector_name" in attrs and attrs["detector_name"].string_value:
-            instance._detector_name = attrs["detector_name"].string_value
-            instance._detector = dependencies[Vision.get_resource_name(instance._detector_name)]
-            LOGGER.debug(
-                f"Optional upstream detector {instance._detector_name} will filter SAM3 results"
-            )
-
-        if "confidence_threshold" in attrs:
-            instance._confidence_threshold = attrs["confidence_threshold"].number_value
-        if "depth_threshold_mm" in attrs:
-            instance._depth_threshold_mm = int(attrs["depth_threshold_mm"].number_value)
-        if "min_points" in attrs:
-            instance._min_points = int(attrs["min_points"].number_value)
-        if "highlighting_on" in attrs:
-            instance._highlighting_on = attrs["highlighting_on"].bool_value
-        if "highlight_color" in attrs:
-            color_fields = attrs["highlight_color"].struct_value.fields
-            instance._highlight_color = (
-                max(0, min(255, int(color_fields["r"].number_value))),
-                max(0, min(255, int(color_fields["g"].number_value))),
-                max(0, min(255, int(color_fields["b"].number_value))),
-            )
-        if "debug" in attrs:
-            instance._debug = attrs["debug"].bool_value
-
+        instance._apply_config(config, dependencies)
         instance._device = select_device()
         LOGGER.debug(f"Loading SAM3 ImageProcessor ({SAM3_MODEL_ID}) on {instance._device}")
         instance._processor = load_image_processor(
@@ -211,6 +178,85 @@ class Sam3Segments(Vision, EasyResource):
         LOGGER.info("SAM3 ImageProcessor loaded")
         instance._robot_client = None
         return instance
+
+    def reconfigure(
+        self, config: ComponentConfig, dependencies: Mapping[ResourceName, ResourceBase]
+    ) -> None:
+        """Swap camera and detector clients and keep the loaded SAM3 weights.
+
+        Called when an underlying dependency such as the RealSense reconfigures.
+        The frame-system robot client is left open; only the dependency handles
+        and thresholds change.
+        """
+        self._apply_config(config, dependencies)
+        LOGGER.info(
+            f"Reconfigured {self.name} with camera {self._camera_name!r} "
+            f"without reloading the SAM3 model"
+        )
+
+    def _apply_config(
+        self, config: ComponentConfig, dependencies: Mapping[ResourceName, ResourceBase]
+    ) -> None:
+        attrs = config.attributes.fields
+        camera_name = attrs["camera_name"].string_value
+        camera = dependencies[Camera.get_resource_name(camera_name)]
+        label = attrs["label"].string_value
+        LOGGER.info(f"Text prompt (label): {label!r}")
+
+        detector_name = ""
+        detector = None
+        if "detector_name" in attrs and attrs["detector_name"].string_value:
+            detector_name = attrs["detector_name"].string_value
+            detector = dependencies[Vision.get_resource_name(detector_name)]
+            LOGGER.debug(
+                f"Optional upstream detector {detector_name} will filter SAM3 results"
+            )
+
+        if "confidence_threshold" in attrs:
+            confidence = attrs["confidence_threshold"].number_value
+        else:
+            confidence = 0.5
+        if "depth_threshold_mm" in attrs:
+            depth_threshold_mm = int(attrs["depth_threshold_mm"].number_value)
+        else:
+            depth_threshold_mm = 0
+        if "min_points" in attrs:
+            min_points = int(attrs["min_points"].number_value)
+        else:
+            min_points = 50
+        if "highlighting_on" in attrs:
+            highlighting_on = attrs["highlighting_on"].bool_value
+        else:
+            highlighting_on = False
+        if "highlight_color" in attrs:
+            color_fields = attrs["highlight_color"].struct_value.fields
+            highlight_color = (
+                max(0, min(255, int(color_fields["r"].number_value))),
+                max(0, min(255, int(color_fields["g"].number_value))),
+                max(0, min(255, int(color_fields["b"].number_value))),
+            )
+        else:
+            highlight_color = (0, 255, 0)
+        if "debug" in attrs:
+            debug = attrs["debug"].bool_value
+        else:
+            debug = False
+
+        with self._lock:
+            self._camera_name = camera_name
+            self._camera = camera
+            self._label = label
+            self._detector_name = detector_name
+            self._detector = detector
+            self._confidence_threshold = confidence
+            self._depth_threshold_mm = depth_threshold_mm
+            self._min_points = min_points
+            self._highlighting_on = highlighting_on
+            self._highlight_color = highlight_color
+            self._debug = debug
+            processor = getattr(self, "_processor", None)
+            if processor is not None and hasattr(processor, "confidence_threshold"):
+                processor.confidence_threshold = confidence
 
     @classmethod
     def validate_config(

@@ -99,33 +99,8 @@ class Sam3(Vision, EasyResource):
         instance._frame_count = 0
         instance._window_start = 0
         instance._frames_since_propagation = 0
-        attrs = config.attributes.fields
-
-        instance._camera_name = attrs["camera_name"].string_value
-        instance._camera = dependencies[Camera.get_resource_name(instance._camera_name)]
-        LOGGER.debug(f"Using camera: {instance._camera_name}")
-
-        instance._label = attrs["label"].string_value
-        LOGGER.info(f"Text prompt (label): {instance._label!r}")
-
-        if "confidence_threshold" in attrs:
-            instance._confidence_threshold = attrs["confidence_threshold"].number_value
-        if "propagation_interval" in attrs:
-            instance._propagation_interval = int(attrs["propagation_interval"].number_value)
-        if "max_frames" in attrs:
-            instance._max_frames = int(attrs["max_frames"].number_value)
-        else:
-            instance._max_frames = DEFAULT_MAX_FRAMES
-
-        if "initial_point_x" in attrs and "initial_point_y" in attrs:
-            instance._initial_point = (
-                int(attrs["initial_point_x"].number_value),
-                int(attrs["initial_point_y"].number_value),
-            )
-            LOGGER.debug(f"Optional point prompt: {instance._initial_point}")
-        else:
-            instance._initial_point = None
-
+        instance._frame_dir = None
+        instance._apply_config(config, dependencies)
         instance._frame_dir = tempfile.mkdtemp(prefix="sam3_frames_")
         instance._device = select_device()
         instance._use_video = video_predictor_supported(instance._device)
@@ -153,6 +128,78 @@ class Sam3(Vision, EasyResource):
                 f"(video tracking requires CUDA)"
             )
         return instance
+
+    def reconfigure(
+        self, config: ComponentConfig, dependencies: Mapping[ResourceName, ResourceBase]
+    ) -> None:
+        """Swap in new dependency clients and keep the loaded SAM3 weights.
+
+        viam-server calls this when the camera (or any other dependency)
+        reconfigures. Reloading the checkpoint here would time out the rebuild
+        and leave the service failed until the module process restarts.
+        """
+        self._apply_config(config, dependencies)
+        self._reset_tracking_state()
+        LOGGER.info(
+            f"Reconfigured {self.name} with camera {self._camera_name!r} "
+            f"without reloading the SAM3 model"
+        )
+
+    def _apply_config(
+        self, config: ComponentConfig, dependencies: Mapping[ResourceName, ResourceBase]
+    ) -> None:
+        attrs = config.attributes.fields
+        camera_name = attrs["camera_name"].string_value
+        camera = dependencies[Camera.get_resource_name(camera_name)]
+        label = attrs["label"].string_value
+        LOGGER.debug(f"Using camera: {camera_name}")
+        LOGGER.info(f"Text prompt (label): {label!r}")
+
+        if "confidence_threshold" in attrs:
+            confidence = attrs["confidence_threshold"].number_value
+        else:
+            confidence = DEFAULT_CONFIDENCE
+        if "propagation_interval" in attrs:
+            propagation_interval = int(attrs["propagation_interval"].number_value)
+        else:
+            propagation_interval = 1
+        if "max_frames" in attrs:
+            max_frames = int(attrs["max_frames"].number_value)
+        else:
+            max_frames = DEFAULT_MAX_FRAMES
+
+        if "initial_point_x" in attrs and "initial_point_y" in attrs:
+            initial_point = (
+                int(attrs["initial_point_x"].number_value),
+                int(attrs["initial_point_y"].number_value),
+            )
+            LOGGER.debug(f"Optional point prompt: {initial_point}")
+        else:
+            initial_point = None
+
+        with self._lock:
+            self._camera_name = camera_name
+            self._camera = camera
+            self._label = label
+            self._confidence_threshold = confidence
+            self._propagation_interval = propagation_interval
+            self._max_frames = max_frames
+            self._initial_point = initial_point
+            processor = getattr(self, "_processor", None)
+            if processor is not None and hasattr(processor, "confidence_threshold"):
+                processor.confidence_threshold = confidence
+
+    def _reset_tracking_state(self) -> None:
+        """Drop frames captured before the camera came back."""
+        with self._lock:
+            self._detections = {}
+            self._last_detections = []
+            self._frame_count = 0
+            self._window_start = 0
+            self._frames_since_propagation = 0
+            if self._frame_dir and os.path.isdir(self._frame_dir):
+                shutil.rmtree(self._frame_dir, ignore_errors=True)
+            self._frame_dir = tempfile.mkdtemp(prefix="sam3_frames_")
 
     @classmethod
     def validate_config(

@@ -12,7 +12,9 @@ import asyncio
 from viam.module.module import Module
 from models.sam3 import Sam3 as Sam3Model
 from models.sam3_segments import Sam3Segments as Sam3SegmentsModel
+import sdk_reconfigure
 
 
 if __name__ == "__main__":
+    sdk_reconfigure.install()
     asyncio.run(Module.run_from_registry())
