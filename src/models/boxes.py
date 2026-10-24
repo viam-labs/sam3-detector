@@ -56,7 +56,9 @@ def as_numpy(value: Any) -> Optional[np.ndarray]:
     return np.asarray(value)
 
 
-def _clip_box(x_min: int, y_min: int, x_max: int, y_max: int) -> Optional[Tuple[int, int, int, int]]:
+def _clip_box(
+    x_min: int, y_min: int, x_max: int, y_max: int
+) -> Optional[Tuple[int, int, int, int]]:
     if x_max <= x_min or y_max <= y_min:
         return None
     return x_min, y_min, x_max, y_max
@@ -85,7 +87,9 @@ def detections_from_xyxy(
         if score < min_score:
             continue
         x0, y0, x1, y1 = (float(v) for v in box[:4])
-        clipped = _clip_box(int(round(x0)), int(round(y0)), int(round(x1)), int(round(y1)))
+        clipped = _clip_box(
+            int(round(x0)), int(round(y0)), int(round(x1)), int(round(y1))
+        )
         if clipped is None:
             continue
         x_min, y_min, x_max, y_max = clipped
@@ -198,7 +202,9 @@ def detections_from_video_outputs(
         bbox: Optional[Tuple[int, int, int, int]] = None
         if boxes is not None and i < len(boxes):
             x0, y0, x1, y1 = rel_xywh_to_xyxy(boxes[i], width, height)
-            bbox = _clip_box(int(round(x0)), int(round(y0)), int(round(x1)), int(round(y1)))
+            bbox = _clip_box(
+                int(round(x0)), int(round(y0)), int(round(x1)), int(round(y1))
+            )
         if bbox is None and masks is not None and i < len(masks):
             bbox = mask_to_bbox(masks[i])
         if bbox is None:
@@ -224,10 +230,14 @@ def detections_from_processor_state(
     min_score: float = 0.0,
 ) -> List[RawDetection]:
     """Read `boxes` / `scores` / `masks` from a Sam3Processor state dict."""
-    dets = detections_from_xyxy(state.get("boxes"), state.get("scores"), label, min_score)
+    dets = detections_from_xyxy(
+        state.get("boxes"), state.get("scores"), label, min_score
+    )
     if dets:
         return dets
-    return detections_from_masks(state.get("masks"), state.get("scores"), label, min_score)
+    return detections_from_masks(
+        state.get("masks"), state.get("scores"), label, min_score
+    )
 
 
 def to_iterable(dets: Iterable[RawDetection]) -> List[RawDetection]:

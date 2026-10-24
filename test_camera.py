@@ -34,7 +34,9 @@ if os.path.exists(env_path):
                 k, v = line.split("=", 1)
                 os.environ.setdefault(k.strip(), v.strip())
 
-ROBOT_ADDRESS = os.environ.get("VIAM_ROBOT_ADDRESS", "computer-demo-main.496koy7yd1.viam.cloud")
+ROBOT_ADDRESS = os.environ.get(
+    "VIAM_ROBOT_ADDRESS", "computer-demo-main.496koy7yd1.viam.cloud"
+)
 CAMERA_NAME = os.environ.get("VIAM_CAMERA_NAME", "camera-image-dir")
 NUM_FRAMES = 20
 LABEL = "stemless wine glass"
@@ -62,7 +64,8 @@ async def main():
         ROBOT_ADDRESS,
         RobotClient.Options(
             dial_options=DialOptions.with_api_key(
-                api_key=api_key, api_key_id=api_key_id,
+                api_key=api_key,
+                api_key_id=api_key_id,
             ),
         ),
     )
@@ -130,10 +133,18 @@ async def main():
     print(f"Building video: {video_path}")
     subprocess.run(
         [
-            "ffmpeg", "-y", "-framerate", "5",
-            "-i", f"{OUTPUT_DIR}/%d.jpg",
-            "-c:v", "libx264", "-pix_fmt", "yuv420p",
-            "-vf", "pad=ceil(iw/2)*2:ceil(ih/2)*2",
+            "ffmpeg",
+            "-y",
+            "-framerate",
+            "5",
+            "-i",
+            f"{OUTPUT_DIR}/%d.jpg",
+            "-c:v",
+            "libx264",
+            "-pix_fmt",
+            "yuv420p",
+            "-vf",
+            "pad=ceil(iw/2)*2:ceil(ih/2)*2",
             video_path,
         ],
         capture_output=True,

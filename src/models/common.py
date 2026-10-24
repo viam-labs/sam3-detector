@@ -161,7 +161,9 @@ def checkpoint_search_dirs() -> list:
     """Directories that may contain a bundled `checkpoints/sam3.pt`."""
     search_dirs = [
         os.path.dirname(os.path.abspath(__file__)),  # src/models/
-        os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."),  # repo root
+        os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "..", ".."
+        ),  # repo root
         os.getcwd(),
     ]
     if hasattr(sys, "_MEIPASS"):

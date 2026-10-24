@@ -79,7 +79,10 @@ def test_remove_resource_closes_and_drops_aliases():
         namespace="rdk", type="service", subtype="vision", name="sam3-segmenter-left"
     )
     alias = ResourceName(
-        namespace="rdk", type="service", subtype="vision", name="sam3-segmenter-left-alias"
+        namespace="rdk",
+        type="service",
+        subtype="vision",
+        name="sam3-segmenter-left-alias",
     )
     manager.resources[primary] = resource
     manager.resources[alias] = resource

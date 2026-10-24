@@ -35,7 +35,11 @@ from viam.resource.types import Model, ModelFamily
 from viam.services.vision import CaptureAllResult, Vision
 from viam.utils import ValueTypes
 
-from models.boxes import RawDetection, detections_from_processor_state, detections_from_video_outputs
+from models.boxes import (
+    RawDetection,
+    detections_from_processor_state,
+    detections_from_video_outputs,
+)
 from models.common import (
     SAM3_MODEL_ID,
     numpy_to_pil,
@@ -44,7 +48,11 @@ from models.common import (
     torch_build_info,
     viam_image_to_numpy,
 )
-from models.loader import load_image_processor, load_video_predictor, video_predictor_supported
+from models.loader import (
+    load_image_processor,
+    load_video_predictor,
+    video_predictor_supported,
+)
 
 LOGGER = getLogger(__name__)
 
@@ -255,7 +263,9 @@ class Sam3(Vision, EasyResource):
         shutil.rmtree(self._frame_dir, ignore_errors=True)
         self._frame_dir = new_dir
         self._window_start = new_start
-        LOGGER.debug(f"Compacted window: dropped {drop_count} frames, keeping {keep_count}")
+        LOGGER.debug(
+            f"Compacted window: dropped {drop_count} frames, keeping {keep_count}"
+        )
 
     def _run_image_on_array(self, image_np: np.ndarray) -> List[Detection]:
         pil = numpy_to_pil(image_np)
@@ -267,7 +277,9 @@ class Sam3(Vision, EasyResource):
         )
         return [_to_viam(d) for d in raw]
 
-    def _run_image_propagation(self, image_np: np.ndarray, frame_idx: int) -> List[Detection]:
+    def _run_image_propagation(
+        self, image_np: np.ndarray, frame_idx: int
+    ) -> List[Detection]:
         dets = self._run_image_on_array(image_np)
         self._detections[frame_idx] = dets
         self._last_detections = dets
@@ -279,7 +291,9 @@ class Sam3(Vision, EasyResource):
         if window_size == 0 or not self._label:
             return
         width, height = self._last_frame_size
-        LOGGER.debug(f"Running SAM3 video propagation on {window_size} frames, prompt={self._label!r}")
+        LOGGER.debug(
+            f"Running SAM3 video propagation on {window_size} frames, prompt={self._label!r}"
+        )
 
         predictor = self._video_predictor
         response = predictor.handle_request(
@@ -326,7 +340,9 @@ class Sam3(Vision, EasyResource):
                     self._last_detections = dets
         finally:
             try:
-                predictor.handle_request(dict(type="close_session", session_id=session_id))
+                predictor.handle_request(
+                    dict(type="close_session", session_id=session_id)
+                )
             except Exception as err:
                 LOGGER.debug(f"close_session: {err}")
 
@@ -518,7 +534,9 @@ class Sam3(Vision, EasyResource):
                 "total_frames_received": float(self._frame_count),
                 "window_size": float(self._frame_count - self._window_start),
                 "max_frames": float(self._max_frames),
-                "detections_cached": float(sum(len(v) for v in self._detections.values())),
+                "detections_cached": float(
+                    sum(len(v) for v in self._detections.values())
+                ),
                 "device": self._device,
                 "model_name": SAM3_MODEL_ID,
                 "label": self._label,

@@ -82,7 +82,9 @@ async def _connect_to_machine() -> Optional[RobotClient]:
         client = await RobotClient.at_address(
             host,
             RobotClient.Options(
-                dial_options=DialOptions.with_api_key(api_key=api_key, api_key_id=api_key_id),
+                dial_options=DialOptions.with_api_key(
+                    api_key=api_key, api_key_id=api_key_id
+                ),
             ),
         )
         LOGGER.debug(f"Connected to machine at {host} for frame transforms")
@@ -145,7 +147,9 @@ def _encode_pcd_binary(points_mm: np.ndarray, colors: np.ndarray) -> bytes:
 class Sam3Segments(Vision, EasyResource):
     """Vision service: text prompt → SAM3 masks → depth → 3D point clouds."""
 
-    MODEL: ClassVar[Model] = Model(ModelFamily("viam", "sam3-detector"), "sam3-segments")
+    MODEL: ClassVar[Model] = Model(
+        ModelFamily("viam", "sam3-detector"), "sam3-segments"
+    )
 
     _processor: object
     _device: str = "cpu"
@@ -171,7 +175,9 @@ class Sam3Segments(Vision, EasyResource):
         instance._lock = threading.Lock()
         instance._apply_config(config, dependencies)
         instance._device = select_device()
-        LOGGER.debug(f"Loading SAM3 ImageProcessor ({SAM3_MODEL_ID}) on {instance._device}")
+        LOGGER.debug(
+            f"Loading SAM3 ImageProcessor ({SAM3_MODEL_ID}) on {instance._device}"
+        )
         instance._processor = load_image_processor(
             instance._device, confidence_threshold=instance._confidence_threshold
         )
@@ -276,7 +282,9 @@ class Sam3Segments(Vision, EasyResource):
             deps.append(attrs["detector_name"].string_value)
         return deps, []
 
-    def _sam3_text_prompt(self, color_np: np.ndarray) -> Tuple[List[RawDetection], List[np.ndarray]]:
+    def _sam3_text_prompt(
+        self, color_np: np.ndarray
+    ) -> Tuple[List[RawDetection], List[np.ndarray]]:
         """Run SAM3 text prompt. Returns (detections, binary masks aligned 1:1)."""
         pil = numpy_to_pil(color_np)
         with self._lock:
@@ -346,7 +354,11 @@ class Sam3Segments(Vision, EasyResource):
             depth_img = images[1]
         if color_img is None or depth_img is None:
             raise ValueError("Camera must return both color and depth images")
-        return color_img, viam_image_to_numpy(color_img), _depth_image_to_numpy(depth_img)
+        return (
+            color_img,
+            viam_image_to_numpy(color_img),
+            _depth_image_to_numpy(depth_img),
+        )
 
     def _overlay_masks(self, image: ViamImage, masks: List[np.ndarray]) -> ViamImage:
         color_np = viam_image_to_numpy(image)
@@ -369,7 +381,10 @@ class Sam3Segments(Vision, EasyResource):
         mask: np.ndarray,
         color_np: np.ndarray,
         depth_np: np.ndarray,
-        fx: float, fy: float, ppx: float, ppy: float,
+        fx: float,
+        fy: float,
+        ppx: float,
+        ppy: float,
     ) -> Tuple[np.ndarray, np.ndarray]:
         vs, us = np.where(mask)
         depths = depth_np[vs, us].astype(np.float64)
@@ -404,12 +419,21 @@ class Sam3Segments(Vision, EasyResource):
         dims = maxs - mins
         geometry = Geometry(
             center=Pose(
-                x=float(center[0]), y=float(center[1]), z=float(center[2]),
-                o_x=0, o_y=0, o_z=1, theta=0,
+                x=float(center[0]),
+                y=float(center[1]),
+                z=float(center[2]),
+                o_x=0,
+                o_y=0,
+                o_z=1,
+                theta=0,
             ),
-            box=RectangularPrism(dims_mm=Vector3(
-                x=float(dims[0]), y=float(dims[1]), z=float(dims[2]),
-            )),
+            box=RectangularPrism(
+                dims_mm=Vector3(
+                    x=float(dims[0]),
+                    y=float(dims[1]),
+                    z=float(dims[2]),
+                )
+            ),
             label=label,
         )
         return PointCloudObject(
@@ -425,7 +449,9 @@ class Sam3Segments(Vision, EasyResource):
             self._robot_client = await _connect_to_machine()
         return self._robot_client
 
-    async def _transform_points_to_world(self, points_mm: np.ndarray) -> Tuple[np.ndarray, str]:
+    async def _transform_points_to_world(
+        self, points_mm: np.ndarray
+    ) -> Tuple[np.ndarray, str]:
         client = await self._ensure_robot_client()
         if client is None:
             return points_mm, self._camera_name
@@ -442,8 +468,13 @@ class Sam3Segments(Vision, EasyResource):
                 f"OV=({p.o_x:.4f},{p.o_y:.4f},{p.o_z:.4f}) theta={p.theta:.4f}"
             )
             transformed = transform_points_with_pose(
-                p.o_x, p.o_y, p.o_z, p.theta,
-                p.x, p.y, p.z,
+                p.o_x,
+                p.o_y,
+                p.o_z,
+                p.theta,
+                p.x,
+                p.y,
+                p.z,
                 points_mm,
             )
             LOGGER.debug(f"Transformed {len(points_mm)} points to world frame")
@@ -452,7 +483,9 @@ class Sam3Segments(Vision, EasyResource):
             LOGGER.warn(f"Could not transform to world frame: {e}")
             return points_mm, self._camera_name
 
-    async def _prompt_image(self, image: ViamImage) -> Tuple[List[RawDetection], List[np.ndarray]]:
+    async def _prompt_image(
+        self, image: ViamImage
+    ) -> Tuple[List[RawDetection], List[np.ndarray]]:
         color_np = viam_image_to_numpy(image)
         dets, masks = self._sam3_text_prompt(color_np)
         return await self._maybe_filter_with_upstream(image, dets, masks)
@@ -467,7 +500,9 @@ class Sam3Segments(Vision, EasyResource):
         props = await self._camera.get_properties()
         intrinsics = props.intrinsic_parameters
         if intrinsics is None:
-            raise ValueError("Camera must provide intrinsic parameters for 3D projection")
+            raise ValueError(
+                "Camera must provide intrinsic parameters for 3D projection"
+            )
         fx = intrinsics.focal_x_px
         fy = intrinsics.focal_y_px
         ppx = intrinsics.center_x_px
@@ -476,7 +511,9 @@ class Sam3Segments(Vision, EasyResource):
 
         color_viam, color_np, depth_np = await self._get_color_and_depth()
         dets, masks = await self._prompt_image(color_viam)
-        LOGGER.debug(f"SAM3 text prompt {self._label!r} returned {len(dets)} instance(s)")
+        LOGGER.debug(
+            f"SAM3 text prompt {self._label!r} returned {len(dets)} instance(s)"
+        )
 
         results = []
         for det, mask in zip(dets, masks):
@@ -489,7 +526,9 @@ class Sam3Segments(Vision, EasyResource):
             )
             points, colors = self._clean_points(points_raw, colors_raw)
             if len(points) < self._min_points:
-                LOGGER.debug(f"Skipping segment with {len(points)} points (min={self._min_points})")
+                LOGGER.debug(
+                    f"Skipping segment with {len(points)} points (min={self._min_points})"
+                )
                 continue
             label = det.class_name or self._label or "object"
             cam_center = points.mean(axis=0)
@@ -503,12 +542,19 @@ class Sam3Segments(Vision, EasyResource):
                 f"  -> {ref_frame} frame center="
                 f"({world_center[0]:.0f},{world_center[1]:.0f},{world_center[2]:.0f})mm"
             )
-            results.append(self._build_point_cloud_object(points, colors, label, ref_frame))
+            results.append(
+                self._build_point_cloud_object(points, colors, label, ref_frame)
+            )
             if self._debug:
-                points_raw_world, raw_ref_frame = await self._transform_points_to_world(points_raw)
+                points_raw_world, raw_ref_frame = await self._transform_points_to_world(
+                    points_raw
+                )
                 results.append(
                     self._build_point_cloud_object(
-                        points_raw_world, colors_raw, f"debug_{label}_before_cleaning", raw_ref_frame
+                        points_raw_world,
+                        colors_raw,
+                        f"debug_{label}_before_cleaning",
+                        raw_ref_frame,
                     )
                 )
         LOGGER.debug(f"Returning {len(results)} point cloud objects")
@@ -524,8 +570,12 @@ class Sam3Segments(Vision, EasyResource):
         dets, _ = await self._prompt_image(image)
         return [
             Detection(
-                x_min=d.x_min, y_min=d.y_min, x_max=d.x_max, y_max=d.y_max,
-                confidence=d.confidence, class_name=d.class_name,
+                x_min=d.x_min,
+                y_min=d.y_min,
+                x_max=d.x_max,
+                y_max=d.y_max,
+                confidence=d.confidence,
+                class_name=d.class_name,
             )
             for d in dets
         ]
@@ -573,8 +623,12 @@ class Sam3Segments(Vision, EasyResource):
         if return_detections:
             result.detections = [
                 Detection(
-                    x_min=d.x_min, y_min=d.y_min, x_max=d.x_max, y_max=d.y_max,
-                    confidence=d.confidence, class_name=d.class_name,
+                    x_min=d.x_min,
+                    y_min=d.y_min,
+                    x_max=d.x_max,
+                    y_max=d.y_max,
+                    confidence=d.confidence,
+                    class_name=d.class_name,
                 )
                 for d in dets
             ]
@@ -638,9 +692,7 @@ class Sam3Segments(Vision, EasyResource):
         return {"error": f"unknown command: {cmd}"}
 
 
-def _boxes_overlap(
-    a: Tuple[int, int, int, int], b: Tuple[int, int, int, int]
-) -> bool:
+def _boxes_overlap(a: Tuple[int, int, int, int], b: Tuple[int, int, int, int]) -> bool:
     ax0, ay0, ax1, ay1 = a
     bx0, by0, bx1, by1 = b
     return not (ax1 < bx0 or bx1 < ax0 or ay1 < by0 or by1 < ay0)

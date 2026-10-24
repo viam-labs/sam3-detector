@@ -11,8 +11,13 @@ from models.sam3 import Sam3, _to_viam
 
 def test_to_viam_detection_preserves_label():
     raw = RawDetection(
-        x_min=1, y_min=2, x_max=3, y_max=4,
-        confidence=0.5, class_name="stemless wine glass", object_id=9,
+        x_min=1,
+        y_min=2,
+        x_max=3,
+        y_max=4,
+        confidence=0.5,
+        class_name="stemless wine glass",
+        object_id=9,
     )
     det = _to_viam(raw)
     assert det.class_name == "stemless wine glass"

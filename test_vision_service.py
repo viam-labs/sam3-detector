@@ -44,7 +44,8 @@ async def main():
         ROBOT_ADDRESS,
         RobotClient.Options(
             dial_options=DialOptions.with_api_key(
-                api_key=api_key, api_key_id=api_key_id,
+                api_key=api_key,
+                api_key_id=api_key_id,
             ),
         ),
     )
@@ -56,7 +57,9 @@ async def main():
     status = await vision.do_command({"command": "status"})
     print(f"Module status: {status}")
 
-    print(f"Capturing {NUM_FRAMES} frames from vision service '{VISION_SERVICE_NAME}'...")
+    print(
+        f"Capturing {NUM_FRAMES} frames from vision service '{VISION_SERVICE_NAME}'..."
+    )
     detected_count = 0
     for i in range(NUM_FRAMES):
         t0 = time.time()
@@ -82,7 +85,9 @@ async def main():
 
         if pil is not None:
             draw = ImageDraw.Draw(pil)
-            draw.text((10, 10), f"#{i}  {elapsed_ms:.0f}ms  dets:{len(dets)}", fill="white")
+            draw.text(
+                (10, 10), f"#{i}  {elapsed_ms:.0f}ms  dets:{len(dets)}", fill="white"
+            )
             for det in dets:
                 x0, y0, x1, y1 = det.x_min, det.y_min, det.x_max, det.y_max
                 draw.rectangle([x0, y0, x1, y1], outline="lime", width=3)
@@ -102,10 +107,18 @@ async def main():
     print(f"Building video: {video_path}")
     subprocess.run(
         [
-            "ffmpeg", "-y", "-framerate", "5",
-            "-i", f"{OUTPUT_DIR}/%d.jpeg",
-            "-c:v", "libx264", "-pix_fmt", "yuv420p",
-            "-vf", "pad=ceil(iw/2)*2:ceil(ih/2)*2",
+            "ffmpeg",
+            "-y",
+            "-framerate",
+            "5",
+            "-i",
+            f"{OUTPUT_DIR}/%d.jpeg",
+            "-c:v",
+            "libx264",
+            "-pix_fmt",
+            "yuv420p",
+            "-vf",
+            "pad=ceil(iw/2)*2:ceil(ih/2)*2",
             video_path,
         ],
         capture_output=True,
