@@ -54,9 +54,11 @@ jobs:
           cache: pip
 
       # requirements.txt leaves torch out so setup.sh can pick a GPU build. CI
-      # takes the CPU wheels, which avoids multi-GB CUDA downloads.
+      # takes the CPU wheels, which avoids multi-GB CUDA downloads. sam3 imports
+      # triton at module level; the CUDA wheels that setup.sh installs on x86_64
+      # bring it in, and the CPU wheels don't, so it is installed explicitly.
       - name: Install torch
-        run: pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+        run: pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu && pip install triton
 
       - name: Install dependencies
         run: pip install -r requirements.txt pytest pytest-timeout
