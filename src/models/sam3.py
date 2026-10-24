@@ -20,6 +20,8 @@ if os.path.exists("/opt/rocm") and "HSA_OVERRIDE_GFX_VERSION" not in os.environ:
 
 import models.tqdm_silence  # noqa: F401  — silence tqdm before SAM3 imports it
 
+# isort: split
+
 import numpy as np
 from PIL import Image as PILImage
 from typing_extensions import Self

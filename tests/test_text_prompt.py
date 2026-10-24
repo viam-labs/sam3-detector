@@ -5,6 +5,7 @@ import threading
 from unittest.mock import MagicMock
 
 import numpy as np
+
 from models.boxes import RawDetection
 from models.sam3 import Sam3, _to_viam
 

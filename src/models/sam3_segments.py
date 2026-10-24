@@ -16,6 +16,8 @@ from typing import ClassVar, List, Mapping, Optional, Sequence, Tuple
 
 import models.tqdm_silence  # noqa: F401  — before huggingface_hub / SAM3
 
+# isort: split
+
 import numpy as np
 from PIL import Image as PILImage
 from typing_extensions import Self
