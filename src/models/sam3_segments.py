@@ -84,9 +84,7 @@ async def _connect_to_machine() -> Optional[RobotClient]:
         client = await RobotClient.at_address(
             host,
             RobotClient.Options(
-                dial_options=DialOptions.with_api_key(
-                    api_key=api_key, api_key_id=api_key_id
-                ),
+                dial_options=DialOptions.with_api_key(api_key=api_key, api_key_id=api_key_id),
             ),
         )
         LOGGER.debug(f"Connected to machine at {host} for frame transforms")
@@ -149,9 +147,7 @@ def _encode_pcd_binary(points_mm: np.ndarray, colors: np.ndarray) -> bytes:
 class Sam3Segments(Vision, EasyResource):
     """Vision service: text prompt → SAM3 masks → depth → 3D point clouds."""
 
-    MODEL: ClassVar[Model] = Model(
-        ModelFamily("viam", "sam3-detector"), "sam3-segments"
-    )
+    MODEL: ClassVar[Model] = Model(ModelFamily("viam", "sam3-detector"), "sam3-segments")
 
     _processor: object
     _device: str = "cpu"
@@ -170,16 +166,12 @@ class Sam3Segments(Vision, EasyResource):
     _lock: threading.Lock
 
     @classmethod
-    def new(
-        cls, config: ComponentConfig, dependencies: Mapping[ResourceName, ResourceBase]
-    ) -> Self:
+    def new(cls, config: ComponentConfig, dependencies: Mapping[ResourceName, ResourceBase]) -> Self:
         instance = super().new(config, dependencies)
         instance._lock = threading.Lock()
         instance._apply_config(config, dependencies)
         instance._device = select_device()
-        LOGGER.debug(
-            f"Loading SAM3 ImageProcessor ({SAM3_MODEL_ID}) on {instance._device}"
-        )
+        LOGGER.debug(f"Loading SAM3 ImageProcessor ({SAM3_MODEL_ID}) on {instance._device}")
         instance._processor = load_image_processor(
             instance._device, confidence_threshold=instance._confidence_threshold
         )
@@ -187,9 +179,7 @@ class Sam3Segments(Vision, EasyResource):
         instance._robot_client = None
         return instance
 
-    def reconfigure(
-        self, config: ComponentConfig, dependencies: Mapping[ResourceName, ResourceBase]
-    ) -> None:
+    def reconfigure(self, config: ComponentConfig, dependencies: Mapping[ResourceName, ResourceBase]) -> None:
         """Swap camera and detector clients and keep the loaded SAM3 weights.
 
         Called when an underlying dependency such as the RealSense reconfigures.
@@ -197,14 +187,9 @@ class Sam3Segments(Vision, EasyResource):
         and thresholds change.
         """
         self._apply_config(config, dependencies)
-        LOGGER.info(
-            f"Reconfigured {self.name} with camera {self._camera_name!r} "
-            f"without reloading the SAM3 model"
-        )
+        LOGGER.info(f"Reconfigured {self.name} with camera {self._camera_name!r} without reloading the SAM3 model")
 
-    def _apply_config(
-        self, config: ComponentConfig, dependencies: Mapping[ResourceName, ResourceBase]
-    ) -> None:
+    def _apply_config(self, config: ComponentConfig, dependencies: Mapping[ResourceName, ResourceBase]) -> None:
         attrs = config.attributes.fields
         camera_name = attrs["camera_name"].string_value
         camera = dependencies[Camera.get_resource_name(camera_name)]
@@ -216,9 +201,7 @@ class Sam3Segments(Vision, EasyResource):
         if "detector_name" in attrs and attrs["detector_name"].string_value:
             detector_name = attrs["detector_name"].string_value
             detector = dependencies[Vision.get_resource_name(detector_name)]
-            LOGGER.debug(
-                f"Optional upstream detector {detector_name} will filter SAM3 results"
-            )
+            LOGGER.debug(f"Optional upstream detector {detector_name} will filter SAM3 results")
 
         if "confidence_threshold" in attrs:
             confidence = attrs["confidence_threshold"].number_value
@@ -267,9 +250,7 @@ class Sam3Segments(Vision, EasyResource):
                 processor.confidence_threshold = confidence
 
     @classmethod
-    def validate_config(
-        cls, config: ComponentConfig
-    ) -> Tuple[Sequence[str], Sequence[str]]:
+    def validate_config(cls, config: ComponentConfig) -> Tuple[Sequence[str], Sequence[str]]:
         attrs = config.attributes.fields
         if "camera_name" not in attrs or not attrs["camera_name"].string_value:
             raise ValueError("camera_name is required")
@@ -284,9 +265,7 @@ class Sam3Segments(Vision, EasyResource):
             deps.append(attrs["detector_name"].string_value)
         return deps, []
 
-    def _sam3_text_prompt(
-        self, color_np: np.ndarray
-    ) -> Tuple[List[RawDetection], List[np.ndarray]]:
+    def _sam3_text_prompt(self, color_np: np.ndarray) -> Tuple[List[RawDetection], List[np.ndarray]]:
         """Run SAM3 text prompt. Returns (detections, binary masks aligned 1:1)."""
         pil = numpy_to_pil(color_np)
         with self._lock:
@@ -294,9 +273,7 @@ class Sam3Segments(Vision, EasyResource):
                 state = self._processor.set_image(pil)
                 state = self._processor.set_text_prompt(self._label, state)
 
-        dets = detections_from_processor_state(
-            state, self._label, min_score=self._confidence_threshold
-        )
+        dets = detections_from_processor_state(state, self._label, min_score=self._confidence_threshold)
         masks_t = state.get("masks")
         masks: List[np.ndarray] = []
         if masks_t is not None:
@@ -356,11 +333,7 @@ class Sam3Segments(Vision, EasyResource):
             depth_img = images[1]
         if color_img is None or depth_img is None:
             raise ValueError("Camera must return both color and depth images")
-        return (
-            color_img,
-            viam_image_to_numpy(color_img),
-            _depth_image_to_numpy(depth_img),
-        )
+        return color_img, viam_image_to_numpy(color_img), _depth_image_to_numpy(depth_img)
 
     def _overlay_masks(self, image: ViamImage, masks: List[np.ndarray]) -> ViamImage:
         color_np = viam_image_to_numpy(image)
@@ -370,9 +343,7 @@ class Sam3Segments(Vision, EasyResource):
             bool_mask = np.asarray(mask).astype(bool)
             if bool_mask.shape[:2] != overlay.shape[:2]:
                 continue
-            overlay[bool_mask] = (
-                overlay[bool_mask].astype(np.float32) * 0.5 + color * 0.5
-            ).astype(np.uint8)
+            overlay[bool_mask] = (overlay[bool_mask].astype(np.float32) * 0.5 + color * 0.5).astype(np.uint8)
         pil = PILImage.fromarray(overlay)
         buf = io.BytesIO()
         pil.save(buf, format="JPEG", quality=90)
@@ -401,9 +372,7 @@ class Sam3Segments(Vision, EasyResource):
         colors = color_np[vs, us]
         return points, colors
 
-    def _clean_points(
-        self, points: np.ndarray, colors: np.ndarray
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    def _clean_points(self, points: np.ndarray, colors: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         if self._depth_threshold_mm <= 0 or len(points) == 0:
             return points, colors
         depths = points[:, 2]
@@ -451,9 +420,7 @@ class Sam3Segments(Vision, EasyResource):
             self._robot_client = await _connect_to_machine()
         return self._robot_client
 
-    async def _transform_points_to_world(
-        self, points_mm: np.ndarray
-    ) -> Tuple[np.ndarray, str]:
+    async def _transform_points_to_world(self, points_mm: np.ndarray) -> Tuple[np.ndarray, str]:
         client = await self._ensure_robot_client()
         if client is None:
             return points_mm, self._camera_name
@@ -485,9 +452,7 @@ class Sam3Segments(Vision, EasyResource):
             LOGGER.warn(f"Could not transform to world frame: {e}")
             return points_mm, self._camera_name
 
-    async def _prompt_image(
-        self, image: ViamImage
-    ) -> Tuple[List[RawDetection], List[np.ndarray]]:
+    async def _prompt_image(self, image: ViamImage) -> Tuple[List[RawDetection], List[np.ndarray]]:
         color_np = viam_image_to_numpy(image)
         dets, masks = self._sam3_text_prompt(color_np)
         return await self._maybe_filter_with_upstream(image, dets, masks)
@@ -502,9 +467,7 @@ class Sam3Segments(Vision, EasyResource):
         props = await self._camera.get_properties()
         intrinsics = props.intrinsic_parameters
         if intrinsics is None:
-            raise ValueError(
-                "Camera must provide intrinsic parameters for 3D projection"
-            )
+            raise ValueError("Camera must provide intrinsic parameters for 3D projection")
         fx = intrinsics.focal_x_px
         fy = intrinsics.focal_y_px
         ppx = intrinsics.center_x_px
@@ -513,9 +476,7 @@ class Sam3Segments(Vision, EasyResource):
 
         color_viam, color_np, depth_np = await self._get_color_and_depth()
         dets, masks = await self._prompt_image(color_viam)
-        LOGGER.debug(
-            f"SAM3 text prompt {self._label!r} returned {len(dets)} instance(s)"
-        )
+        LOGGER.debug(f"SAM3 text prompt {self._label!r} returned {len(dets)} instance(s)")
 
         results = []
         for det, mask in zip(dets, masks):
@@ -523,14 +484,10 @@ class Sam3Segments(Vision, EasyResource):
                 bbox = (det.x_min, det.y_min, det.x_max, det.y_max)
                 LOGGER.debug(f"Empty mask for {bbox}, skipping")
                 continue
-            points_raw, colors_raw = self._mask_to_points_raw(
-                mask, color_np, depth_np, fx, fy, ppx, ppy
-            )
+            points_raw, colors_raw = self._mask_to_points_raw(mask, color_np, depth_np, fx, fy, ppx, ppy)
             points, colors = self._clean_points(points_raw, colors_raw)
             if len(points) < self._min_points:
-                LOGGER.debug(
-                    f"Skipping segment with {len(points)} points (min={self._min_points})"
-                )
+                LOGGER.debug(f"Skipping segment with {len(points)} points (min={self._min_points})")
                 continue
             label = det.class_name or self._label or "object"
             cam_center = points.mean(axis=0)
@@ -541,22 +498,14 @@ class Sam3Segments(Vision, EasyResource):
             points, ref_frame = await self._transform_points_to_world(points)
             world_center = points.mean(axis=0)
             LOGGER.debug(
-                f"  -> {ref_frame} frame center="
-                f"({world_center[0]:.0f},{world_center[1]:.0f},{world_center[2]:.0f})mm"
+                f"  -> {ref_frame} frame center=({world_center[0]:.0f},{world_center[1]:.0f},{world_center[2]:.0f})mm"
             )
-            results.append(
-                self._build_point_cloud_object(points, colors, label, ref_frame)
-            )
+            results.append(self._build_point_cloud_object(points, colors, label, ref_frame))
             if self._debug:
-                points_raw_world, raw_ref_frame = await self._transform_points_to_world(
-                    points_raw
-                )
+                points_raw_world, raw_ref_frame = await self._transform_points_to_world(points_raw)
                 results.append(
                     self._build_point_cloud_object(
-                        points_raw_world,
-                        colors_raw,
-                        f"debug_{label}_before_cleaning",
-                        raw_ref_frame,
+                        points_raw_world, colors_raw, f"debug_{label}_before_cleaning", raw_ref_frame
                     )
                 )
         LOGGER.debug(f"Returning {len(results)} point cloud objects")
@@ -606,9 +555,7 @@ class Sam3Segments(Vision, EasyResource):
         timeout: Optional[float] = None,
     ) -> CaptureAllResult:
         if camera_name not in (self._camera_name, ""):
-            raise ValueError(
-                f"Camera name '{camera_name}' does not match configured camera '{self._camera_name}'."
-            )
+            raise ValueError(f"Camera name '{camera_name}' does not match configured camera '{self._camera_name}'.")
         result = CaptureAllResult()
         images, _ = await self._camera.get_images()
         if not images:
@@ -635,9 +582,7 @@ class Sam3Segments(Vision, EasyResource):
                 for d in dets
             ]
         if return_object_point_clouds:
-            result.objects = await self.get_object_point_clouds(
-                camera_name, extra=extra, timeout=timeout
-            )
+            result.objects = await self.get_object_point_clouds(camera_name, extra=extra, timeout=timeout)
         return result
 
     async def get_classifications_from_camera(

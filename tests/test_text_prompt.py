@@ -81,9 +81,7 @@ def test_set_label_do_command_changes_prompt_without_a_box():
     inst._detections = {0: ["stale"]}
     inst._last_detections = ["stale"]
 
-    result = asyncio.run(
-        inst.do_command({"command": "set_label", "label": "stemless wine glass"})
-    )
+    result = asyncio.run(inst.do_command({"command": "set_label", "label": "stemless wine glass"}))
     assert inst._label == "stemless wine glass"
     assert inst._detections == {}
     assert inst._last_detections == []

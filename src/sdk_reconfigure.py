@@ -92,9 +92,7 @@ async def _reconfigure_resource(self: Module, request) -> None:
             else:
                 resource.stop()
         await self.server.remove_resource(rn)
-    await self.add_resource(
-        AddResourceRequest(config=request.config, dependencies=request.dependencies)
-    )
+    await self.add_resource(AddResourceRequest(config=request.config, dependencies=request.dependencies))
 
 
 def install() -> None:

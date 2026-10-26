@@ -84,12 +84,7 @@ def test_processor_state_prefers_boxes_over_masks():
     }
     dets = detections_from_processor_state(state, "stemless wine glass")
     assert len(dets) == 1
-    assert (dets[0].x_min, dets[0].y_min, dets[0].x_max, dets[0].y_max) == (
-        5,
-        6,
-        25,
-        26,
-    )
+    assert (dets[0].x_min, dets[0].y_min, dets[0].x_max, dets[0].y_max) == (5, 6, 25, 26)
 
 
 def test_processor_state_falls_back_to_mask_bbox():

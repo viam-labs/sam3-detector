@@ -32,9 +32,7 @@ if os.path.exists(env_path):
                 k, v = line.split("=", 1)
                 os.environ.setdefault(k.strip(), v.strip())
 
-ROBOT_ADDRESS = os.environ.get(
-    "VIAM_ROBOT_ADDRESS", "computer-demo-main.496koy7yd1.viam.cloud"
-)
+ROBOT_ADDRESS = os.environ.get("VIAM_ROBOT_ADDRESS", "computer-demo-main.496koy7yd1.viam.cloud")
 CAMERA_NAME = os.environ.get("VIAM_CAMERA_NAME", "camera-image-dir")
 NUM_FRAMES = 20
 LABEL = "stemless wine glass"
