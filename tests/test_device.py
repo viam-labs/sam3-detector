@@ -19,8 +19,10 @@ from models.loader import video_predictor_supported
 def test_tqdm_silence_allows_hf_hub_download():
     """tqdm stub must keep set_lock so Hub's lazy hf_hub_download import works."""
     import models.tqdm_silence  # noqa: F401
-    from huggingface_hub import hf_hub_download
+
+    # isort: split
     import tqdm
+    from huggingface_hub import hf_hub_download
 
     assert callable(hf_hub_download)
     assert hasattr(tqdm.tqdm, "set_lock")
@@ -29,6 +31,8 @@ def test_tqdm_silence_allows_hf_hub_download():
 def test_sam3_model_builder_imports_after_tqdm_silence():
     """Regression for the sam3-segments resource build ImportError."""
     import models.tqdm_silence  # noqa: F401
+
+    # isort: split
     from sam3.model_builder import build_sam3_image_model
 
     assert callable(build_sam3_image_model)

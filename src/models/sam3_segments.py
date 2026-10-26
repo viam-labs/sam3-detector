@@ -16,6 +16,8 @@ from typing import ClassVar, List, Mapping, Optional, Sequence, Tuple
 
 import models.tqdm_silence  # noqa: F401  — before huggingface_hub / SAM3
 
+# isort: split
+
 import numpy as np
 from PIL import Image as PILImage
 from typing_extensions import Self
@@ -164,9 +166,7 @@ class Sam3Segments(Vision, EasyResource):
     _lock: threading.Lock
 
     @classmethod
-    def new(
-        cls, config: ComponentConfig, dependencies: Mapping[ResourceName, ResourceBase]
-    ) -> Self:
+    def new(cls, config: ComponentConfig, dependencies: Mapping[ResourceName, ResourceBase]) -> Self:
         instance = super().new(config, dependencies)
         instance._lock = threading.Lock()
         instance._apply_config(config, dependencies)
@@ -179,9 +179,7 @@ class Sam3Segments(Vision, EasyResource):
         instance._robot_client = None
         return instance
 
-    def reconfigure(
-        self, config: ComponentConfig, dependencies: Mapping[ResourceName, ResourceBase]
-    ) -> None:
+    def reconfigure(self, config: ComponentConfig, dependencies: Mapping[ResourceName, ResourceBase]) -> None:
         """Swap camera and detector clients and keep the loaded SAM3 weights.
 
         Called when an underlying dependency such as the RealSense reconfigures.
@@ -189,14 +187,9 @@ class Sam3Segments(Vision, EasyResource):
         and thresholds change.
         """
         self._apply_config(config, dependencies)
-        LOGGER.info(
-            f"Reconfigured {self.name} with camera {self._camera_name!r} "
-            f"without reloading the SAM3 model"
-        )
+        LOGGER.info(f"Reconfigured {self.name} with camera {self._camera_name!r} without reloading the SAM3 model")
 
-    def _apply_config(
-        self, config: ComponentConfig, dependencies: Mapping[ResourceName, ResourceBase]
-    ) -> None:
+    def _apply_config(self, config: ComponentConfig, dependencies: Mapping[ResourceName, ResourceBase]) -> None:
         attrs = config.attributes.fields
         camera_name = attrs["camera_name"].string_value
         camera = dependencies[Camera.get_resource_name(camera_name)]
@@ -208,9 +201,7 @@ class Sam3Segments(Vision, EasyResource):
         if "detector_name" in attrs and attrs["detector_name"].string_value:
             detector_name = attrs["detector_name"].string_value
             detector = dependencies[Vision.get_resource_name(detector_name)]
-            LOGGER.debug(
-                f"Optional upstream detector {detector_name} will filter SAM3 results"
-            )
+            LOGGER.debug(f"Optional upstream detector {detector_name} will filter SAM3 results")
 
         if "confidence_threshold" in attrs:
             confidence = attrs["confidence_threshold"].number_value
@@ -259,9 +250,7 @@ class Sam3Segments(Vision, EasyResource):
                 processor.confidence_threshold = confidence
 
     @classmethod
-    def validate_config(
-        cls, config: ComponentConfig
-    ) -> Tuple[Sequence[str], Sequence[str]]:
+    def validate_config(cls, config: ComponentConfig) -> Tuple[Sequence[str], Sequence[str]]:
         attrs = config.attributes.fields
         if "camera_name" not in attrs or not attrs["camera_name"].string_value:
             raise ValueError("camera_name is required")
@@ -284,9 +273,7 @@ class Sam3Segments(Vision, EasyResource):
                 state = self._processor.set_image(pil)
                 state = self._processor.set_text_prompt(self._label, state)
 
-        dets = detections_from_processor_state(
-            state, self._label, min_score=self._confidence_threshold
-        )
+        dets = detections_from_processor_state(state, self._label, min_score=self._confidence_threshold)
         masks_t = state.get("masks")
         masks: List[np.ndarray] = []
         if masks_t is not None:
@@ -356,9 +343,7 @@ class Sam3Segments(Vision, EasyResource):
             bool_mask = np.asarray(mask).astype(bool)
             if bool_mask.shape[:2] != overlay.shape[:2]:
                 continue
-            overlay[bool_mask] = (
-                overlay[bool_mask].astype(np.float32) * 0.5 + color * 0.5
-            ).astype(np.uint8)
+            overlay[bool_mask] = (overlay[bool_mask].astype(np.float32) * 0.5 + color * 0.5).astype(np.uint8)
         pil = PILImage.fromarray(overlay)
         buf = io.BytesIO()
         pil.save(buf, format="JPEG", quality=90)
@@ -369,7 +354,10 @@ class Sam3Segments(Vision, EasyResource):
         mask: np.ndarray,
         color_np: np.ndarray,
         depth_np: np.ndarray,
-        fx: float, fy: float, ppx: float, ppy: float,
+        fx: float,
+        fy: float,
+        ppx: float,
+        ppy: float,
     ) -> Tuple[np.ndarray, np.ndarray]:
         vs, us = np.where(mask)
         depths = depth_np[vs, us].astype(np.float64)
@@ -384,9 +372,7 @@ class Sam3Segments(Vision, EasyResource):
         colors = color_np[vs, us]
         return points, colors
 
-    def _clean_points(
-        self, points: np.ndarray, colors: np.ndarray
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    def _clean_points(self, points: np.ndarray, colors: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         if self._depth_threshold_mm <= 0 or len(points) == 0:
             return points, colors
         depths = points[:, 2]
@@ -404,12 +390,21 @@ class Sam3Segments(Vision, EasyResource):
         dims = maxs - mins
         geometry = Geometry(
             center=Pose(
-                x=float(center[0]), y=float(center[1]), z=float(center[2]),
-                o_x=0, o_y=0, o_z=1, theta=0,
+                x=float(center[0]),
+                y=float(center[1]),
+                z=float(center[2]),
+                o_x=0,
+                o_y=0,
+                o_z=1,
+                theta=0,
             ),
-            box=RectangularPrism(dims_mm=Vector3(
-                x=float(dims[0]), y=float(dims[1]), z=float(dims[2]),
-            )),
+            box=RectangularPrism(
+                dims_mm=Vector3(
+                    x=float(dims[0]),
+                    y=float(dims[1]),
+                    z=float(dims[2]),
+                )
+            ),
             label=label,
         )
         return PointCloudObject(
@@ -442,8 +437,13 @@ class Sam3Segments(Vision, EasyResource):
                 f"OV=({p.o_x:.4f},{p.o_y:.4f},{p.o_z:.4f}) theta={p.theta:.4f}"
             )
             transformed = transform_points_with_pose(
-                p.o_x, p.o_y, p.o_z, p.theta,
-                p.x, p.y, p.z,
+                p.o_x,
+                p.o_y,
+                p.o_z,
+                p.theta,
+                p.x,
+                p.y,
+                p.z,
                 points_mm,
             )
             LOGGER.debug(f"Transformed {len(points_mm)} points to world frame")
@@ -484,9 +484,7 @@ class Sam3Segments(Vision, EasyResource):
                 bbox = (det.x_min, det.y_min, det.x_max, det.y_max)
                 LOGGER.debug(f"Empty mask for {bbox}, skipping")
                 continue
-            points_raw, colors_raw = self._mask_to_points_raw(
-                mask, color_np, depth_np, fx, fy, ppx, ppy
-            )
+            points_raw, colors_raw = self._mask_to_points_raw(mask, color_np, depth_np, fx, fy, ppx, ppy)
             points, colors = self._clean_points(points_raw, colors_raw)
             if len(points) < self._min_points:
                 LOGGER.debug(f"Skipping segment with {len(points)} points (min={self._min_points})")
@@ -500,8 +498,7 @@ class Sam3Segments(Vision, EasyResource):
             points, ref_frame = await self._transform_points_to_world(points)
             world_center = points.mean(axis=0)
             LOGGER.debug(
-                f"  -> {ref_frame} frame center="
-                f"({world_center[0]:.0f},{world_center[1]:.0f},{world_center[2]:.0f})mm"
+                f"  -> {ref_frame} frame center=({world_center[0]:.0f},{world_center[1]:.0f},{world_center[2]:.0f})mm"
             )
             results.append(self._build_point_cloud_object(points, colors, label, ref_frame))
             if self._debug:
@@ -524,8 +521,12 @@ class Sam3Segments(Vision, EasyResource):
         dets, _ = await self._prompt_image(image)
         return [
             Detection(
-                x_min=d.x_min, y_min=d.y_min, x_max=d.x_max, y_max=d.y_max,
-                confidence=d.confidence, class_name=d.class_name,
+                x_min=d.x_min,
+                y_min=d.y_min,
+                x_max=d.x_max,
+                y_max=d.y_max,
+                confidence=d.confidence,
+                class_name=d.class_name,
             )
             for d in dets
         ]
@@ -554,9 +555,7 @@ class Sam3Segments(Vision, EasyResource):
         timeout: Optional[float] = None,
     ) -> CaptureAllResult:
         if camera_name not in (self._camera_name, ""):
-            raise ValueError(
-                f"Camera name '{camera_name}' does not match configured camera '{self._camera_name}'."
-            )
+            raise ValueError(f"Camera name '{camera_name}' does not match configured camera '{self._camera_name}'.")
         result = CaptureAllResult()
         images, _ = await self._camera.get_images()
         if not images:
@@ -573,15 +572,17 @@ class Sam3Segments(Vision, EasyResource):
         if return_detections:
             result.detections = [
                 Detection(
-                    x_min=d.x_min, y_min=d.y_min, x_max=d.x_max, y_max=d.y_max,
-                    confidence=d.confidence, class_name=d.class_name,
+                    x_min=d.x_min,
+                    y_min=d.y_min,
+                    x_max=d.x_max,
+                    y_max=d.y_max,
+                    confidence=d.confidence,
+                    class_name=d.class_name,
                 )
                 for d in dets
             ]
         if return_object_point_clouds:
-            result.objects = await self.get_object_point_clouds(
-                camera_name, extra=extra, timeout=timeout
-            )
+            result.objects = await self.get_object_point_clouds(camera_name, extra=extra, timeout=timeout)
         return result
 
     async def get_classifications_from_camera(
@@ -638,9 +639,7 @@ class Sam3Segments(Vision, EasyResource):
         return {"error": f"unknown command: {cmd}"}
 
 
-def _boxes_overlap(
-    a: Tuple[int, int, int, int], b: Tuple[int, int, int, int]
-) -> bool:
+def _boxes_overlap(a: Tuple[int, int, int, int], b: Tuple[int, int, int, int]) -> bool:
     ax0, ay0, ax1, ay1 = a
     bx0, by0, bx1, by1 = b
     return not (ax1 < bx0 or bx1 < ax0 or ay1 < by0 or by1 < ay0)

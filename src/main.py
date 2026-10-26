@@ -8,12 +8,15 @@ os.environ.setdefault("HF_HUB_DISABLE_PROGRESS_BARS", "1")
 
 import models.tqdm_silence  # noqa: F401  — patch tqdm before SAM3/HF Hub import
 
-import asyncio
-from viam.module.module import Module
-from models.sam3 import Sam3 as Sam3Model
-from models.sam3_segments import Sam3Segments as Sam3SegmentsModel
-import sdk_reconfigure
+# isort: split
 
+import asyncio
+
+from viam.module.module import Module
+
+import sdk_reconfigure
+from models.sam3 import Sam3 as Sam3Model  # noqa: F401
+from models.sam3_segments import Sam3Segments as Sam3SegmentsModel  # noqa: F401
 
 if __name__ == "__main__":
     sdk_reconfigure.install()

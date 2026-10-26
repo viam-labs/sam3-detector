@@ -9,10 +9,8 @@ Usage:
 import asyncio
 import io
 import os
-import shutil
 import subprocess
 import sys
-import tempfile
 import time
 
 import numpy as np
@@ -62,7 +60,8 @@ async def main():
         ROBOT_ADDRESS,
         RobotClient.Options(
             dial_options=DialOptions.with_api_key(
-                api_key=api_key, api_key_id=api_key_id,
+                api_key=api_key,
+                api_key_id=api_key_id,
             ),
         ),
     )
@@ -130,10 +129,18 @@ async def main():
     print(f"Building video: {video_path}")
     subprocess.run(
         [
-            "ffmpeg", "-y", "-framerate", "5",
-            "-i", f"{OUTPUT_DIR}/%d.jpg",
-            "-c:v", "libx264", "-pix_fmt", "yuv420p",
-            "-vf", "pad=ceil(iw/2)*2:ceil(ih/2)*2",
+            "ffmpeg",
+            "-y",
+            "-framerate",
+            "5",
+            "-i",
+            f"{OUTPUT_DIR}/%d.jpg",
+            "-c:v",
+            "libx264",
+            "-pix_fmt",
+            "yuv420p",
+            "-vf",
+            "pad=ceil(iw/2)*2:ceil(ih/2)*2",
             video_path,
         ],
         capture_output=True,

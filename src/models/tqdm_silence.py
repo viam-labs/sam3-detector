@@ -15,6 +15,8 @@ import os
 os.environ.setdefault("TQDM_DISABLE", "1")
 os.environ.setdefault("HF_HUB_DISABLE_PROGRESS_BARS", "1")
 
+import tqdm as _tqdm_module
+import tqdm.auto as _tqdm_auto_module
 from tqdm.std import tqdm as _RealTqdm
 
 
@@ -25,9 +27,6 @@ class _SilentTqdm(_RealTqdm):
         kwargs["disable"] = True
         super().__init__(iterable, *args, **kwargs)
 
-
-import tqdm as _tqdm_module
-import tqdm.auto as _tqdm_auto_module
 
 _tqdm_module.tqdm = _SilentTqdm
 _tqdm_auto_module.tqdm = _SilentTqdm

@@ -20,6 +20,8 @@ if os.path.exists("/opt/rocm") and "HSA_OVERRIDE_GFX_VERSION" not in os.environ:
 
 import models.tqdm_silence  # noqa: F401  — silence tqdm before SAM3 imports it
 
+# isort: split
+
 import numpy as np
 from PIL import Image as PILImage
 from typing_extensions import Self
@@ -89,9 +91,7 @@ class Sam3(Vision, EasyResource):
     _lock: threading.Lock
 
     @classmethod
-    def new(
-        cls, config: ComponentConfig, dependencies: Mapping[ResourceName, ResourceBase]
-    ) -> Self:
+    def new(cls, config: ComponentConfig, dependencies: Mapping[ResourceName, ResourceBase]) -> Self:
         instance = super().new(config, dependencies)
         instance._lock = threading.Lock()
         instance._detections = {}
@@ -117,21 +117,15 @@ class Sam3(Vision, EasyResource):
                 LOGGER.info("SAM3 video predictor loaded (text-prompt tracking)")
             except Exception as err:
                 LOGGER.warning(
-                    f"SAM3 video predictor failed to load ({err}); "
-                    f"falling back to per-frame image detection"
+                    f"SAM3 video predictor failed to load ({err}); falling back to per-frame image detection"
                 )
                 instance._use_video = False
                 instance._video_predictor = None
         else:
-            LOGGER.info(
-                f"SAM3 per-frame image detector loaded on {instance._device} "
-                f"(video tracking requires CUDA)"
-            )
+            LOGGER.info(f"SAM3 per-frame image detector loaded on {instance._device} (video tracking requires CUDA)")
         return instance
 
-    def reconfigure(
-        self, config: ComponentConfig, dependencies: Mapping[ResourceName, ResourceBase]
-    ) -> None:
+    def reconfigure(self, config: ComponentConfig, dependencies: Mapping[ResourceName, ResourceBase]) -> None:
         """Swap in new dependency clients and keep the loaded SAM3 weights.
 
         viam-server calls this when the camera (or any other dependency)
@@ -140,14 +134,9 @@ class Sam3(Vision, EasyResource):
         """
         self._apply_config(config, dependencies)
         self._reset_tracking_state()
-        LOGGER.info(
-            f"Reconfigured {self.name} with camera {self._camera_name!r} "
-            f"without reloading the SAM3 model"
-        )
+        LOGGER.info(f"Reconfigured {self.name} with camera {self._camera_name!r} without reloading the SAM3 model")
 
-    def _apply_config(
-        self, config: ComponentConfig, dependencies: Mapping[ResourceName, ResourceBase]
-    ) -> None:
+    def _apply_config(self, config: ComponentConfig, dependencies: Mapping[ResourceName, ResourceBase]) -> None:
         attrs = config.attributes.fields
         camera_name = attrs["camera_name"].string_value
         camera = dependencies[Camera.get_resource_name(camera_name)]
@@ -202,9 +191,7 @@ class Sam3(Vision, EasyResource):
             self._frame_dir = tempfile.mkdtemp(prefix="sam3_frames_")
 
     @classmethod
-    def validate_config(
-        cls, config: ComponentConfig
-    ) -> Tuple[Sequence[str], Sequence[str]]:
+    def validate_config(cls, config: ComponentConfig) -> Tuple[Sequence[str], Sequence[str]]:
         attrs = config.attributes.fields
         if "camera_name" not in attrs or not attrs["camera_name"].string_value:
             raise ValueError("camera_name is required")
@@ -216,9 +203,7 @@ class Sam3(Vision, EasyResource):
         has_x = "initial_point_x" in attrs
         has_y = "initial_point_y" in attrs
         if has_x != has_y:
-            raise ValueError(
-                "Must provide both initial_point_x and initial_point_y, or neither"
-            )
+            raise ValueError("Must provide both initial_point_x and initial_point_y, or neither")
         return [attrs["camera_name"].string_value], []
 
     async def _get_camera_image(self) -> np.ndarray:
@@ -262,9 +247,7 @@ class Sam3(Vision, EasyResource):
         with sam3_amp_context(self._device):
             state = self._processor.set_image(pil)
             state = self._processor.set_text_prompt(self._label, state)
-        raw = detections_from_processor_state(
-            state, self._label, min_score=self._confidence_threshold
-        )
+        raw = detections_from_processor_state(state, self._label, min_score=self._confidence_threshold)
         return [_to_viam(d) for d in raw]
 
     def _run_image_propagation(self, image_np: np.ndarray, frame_idx: int) -> List[Detection]:
@@ -308,9 +291,7 @@ class Sam3(Vision, EasyResource):
             predictor.handle_request(prompt)
 
             self._detections = {}
-            for streamed in predictor.handle_stream_request(
-                dict(type="propagate_in_video", session_id=session_id)
-            ):
+            for streamed in predictor.handle_stream_request(dict(type="propagate_in_video", session_id=session_id)):
                 local_idx = streamed["frame_index"]
                 raw = detections_from_video_outputs(
                     streamed["outputs"],
@@ -343,9 +324,7 @@ class Sam3(Vision, EasyResource):
                 try:
                     self._run_video_propagation()
                 except Exception as err:
-                    LOGGER.warning(
-                        f"Video propagation failed ({err}); using per-frame image detection"
-                    )
+                    LOGGER.warning(f"Video propagation failed ({err}); using per-frame image detection")
                     return self._run_image_propagation(image_np, frame_idx)
             dets = self._detections.get(frame_idx)
             if dets is not None:
@@ -387,10 +366,7 @@ class Sam3(Vision, EasyResource):
         timeout: Optional[float] = None,
     ) -> CaptureAllResult:
         if camera_name not in (self._camera_name, ""):
-            raise ValueError(
-                f"Camera name '{camera_name}' does not match "
-                f"configured camera '{self._camera_name}'."
-            )
+            raise ValueError(f"Camera name '{camera_name}' does not match configured camera '{self._camera_name}'.")
 
         result = CaptureAllResult()
         images, _ = await self._camera.get_images()
@@ -400,9 +376,7 @@ class Sam3(Vision, EasyResource):
         if return_image:
             result.image = images[0]
         if return_detections:
-            result.detections = await self.get_detections(
-                images[0], extra=extra, timeout=timeout
-            )
+            result.detections = await self.get_detections(images[0], extra=extra, timeout=timeout)
         return result
 
     async def get_classifications_from_camera(

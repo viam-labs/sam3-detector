@@ -5,14 +5,20 @@ import threading
 from unittest.mock import MagicMock
 
 import numpy as np
+
 from models.boxes import RawDetection
 from models.sam3 import Sam3, _to_viam
 
 
 def test_to_viam_detection_preserves_label():
     raw = RawDetection(
-        x_min=1, y_min=2, x_max=3, y_max=4,
-        confidence=0.5, class_name="stemless wine glass", object_id=9,
+        x_min=1,
+        y_min=2,
+        x_max=3,
+        y_max=4,
+        confidence=0.5,
+        class_name="stemless wine glass",
+        object_id=9,
     )
     det = _to_viam(raw)
     assert det.class_name == "stemless wine glass"
@@ -75,9 +81,7 @@ def test_set_label_do_command_changes_prompt_without_a_box():
     inst._detections = {0: ["stale"]}
     inst._last_detections = ["stale"]
 
-    result = asyncio.run(
-        inst.do_command({"command": "set_label", "label": "stemless wine glass"})
-    )
+    result = asyncio.run(inst.do_command({"command": "set_label", "label": "stemless wine glass"}))
     assert inst._label == "stemless wine glass"
     assert inst._detections == {}
     assert inst._last_detections == []

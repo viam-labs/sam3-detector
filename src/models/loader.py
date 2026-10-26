@@ -39,9 +39,7 @@ def load_image_processor(device: str, confidence_threshold: float = 0.5):
         )
     except Exception as err:
         raise wrap_checkpoint_error(err) from err
-    return Sam3Processor(
-        model, device=device, confidence_threshold=confidence_threshold
-    )
+    return Sam3Processor(model, device=device, confidence_threshold=confidence_threshold)
 
 
 class DeviceAwareSam3VideoPredictor:
@@ -57,9 +55,7 @@ class DeviceAwareSam3VideoPredictor:
         from sam3.model_builder import build_sam3_video_model
 
         checkpoint_path = resolve_checkpoint_path()
-        LOGGER.debug(
-            f"Loading SAM3 video model (checkpoint={checkpoint_path}) on {device}"
-        )
+        LOGGER.debug(f"Loading SAM3 video model (checkpoint={checkpoint_path}) on {device}")
         self.device = device
         self._base = Sam3BasePredictor()
         self._base.async_loading_frames = False
@@ -105,9 +101,7 @@ class DeviceAwareSam3VideoPredictor:
             point_labels = torch.tensor(point_labels, dtype=torch.int32)
         if bounding_boxes is not None and not isinstance(bounding_boxes, torch.Tensor):
             bounding_boxes = torch.tensor(bounding_boxes, dtype=torch.float32)
-        if bounding_box_labels is not None and not isinstance(
-            bounding_box_labels, torch.Tensor
-        ):
+        if bounding_box_labels is not None and not isinstance(bounding_box_labels, torch.Tensor):
             bounding_box_labels = torch.tensor(bounding_box_labels, dtype=torch.int32)
 
         kwargs = dict(

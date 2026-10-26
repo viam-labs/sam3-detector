@@ -126,8 +126,7 @@ def select_device() -> str:
     if torch.cuda.is_available():
         # torch.cuda covers ROCm too; HIP builds report AMD cards through this API.
         LOGGER.info(
-            f"Using GPU: {torch.cuda.get_device_name(0)} "
-            f"(torch {build['torch_version']}, {build['torch_gpu_support']})"
+            f"Using GPU: {torch.cuda.get_device_name(0)} (torch {build['torch_version']}, {build['torch_gpu_support']})"
         )
         return "cuda"
     if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
@@ -228,9 +227,7 @@ def download_checkpoint(dest_dir: Optional[str] = None) -> str:
     from huggingface_hub import hf_hub_download
 
     if dest_dir is None:
-        dest_dir = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "..", "..", "checkpoints"
-        )
+        dest_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "checkpoints")
     os.makedirs(dest_dir, exist_ok=True)
     token = os.environ.get("HF_TOKEN") or os.environ.get("HUGGING_FACE_HUB_TOKEN")
     try:
