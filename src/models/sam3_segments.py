@@ -12,7 +12,7 @@ import io
 import os
 import struct
 import threading
-from typing import ClassVar, List, Mapping, Optional, Sequence, Tuple
+from typing import ClassVar, Dict, List, Mapping, Optional, Sequence, Tuple
 
 import models.tqdm_silence  # noqa: F401  — before huggingface_hub / SAM3
 
@@ -142,6 +142,17 @@ def _encode_pcd_binary(points_mm: np.ndarray, colors: np.ndarray) -> bytes:
     return header + bytes(buf)
 
 
+def _camera_names_from_attrs(attrs) -> List[str]:
+    """Return camera_name followed by any extra camera_names, de-duplicated."""
+    names = [attrs["camera_name"].string_value]
+    if "camera_names" in attrs:
+        for value in attrs["camera_names"].list_value.values:
+            name = value.string_value
+            if name and name not in names:
+                names.append(name)
+    return names
+
+
 class Sam3Segments(Vision, EasyResource):
     """Vision service: text prompt → SAM3 masks → depth → 3D point clouds."""
 
@@ -153,6 +164,7 @@ class Sam3Segments(Vision, EasyResource):
     _detector: Optional[ResourceBase] = None
     _detector_name: str = ""
     _camera_name: str = ""
+    _cameras: Dict[str, ResourceBase]
     _label: str = ""
     _confidence_threshold: float = 0.5
     _depth_threshold_mm: int = 0
@@ -199,7 +211,11 @@ class Sam3Segments(Vision, EasyResource):
     ) -> None:
         attrs = config.attributes.fields
         camera_name = attrs["camera_name"].string_value
-        camera = dependencies[Camera.get_resource_name(camera_name)]
+        cameras = {
+            name: dependencies[Camera.get_resource_name(name)]
+            for name in _camera_names_from_attrs(attrs)
+        }
+        camera = cameras[camera_name]
         label = attrs["label"].string_value
         LOGGER.info(f"Text prompt (label): {label!r}")
 
@@ -245,6 +261,7 @@ class Sam3Segments(Vision, EasyResource):
         with self._lock:
             self._camera_name = camera_name
             self._camera = camera
+            self._cameras = cameras
             self._label = label
             self._detector_name = detector_name
             self._detector = detector
@@ -271,7 +288,11 @@ class Sam3Segments(Vision, EasyResource):
                 "prompt (e.g. 'stemless wine glass'). No bounding box or "
                 "upstream detector is required."
             )
-        deps = [attrs["camera_name"].string_value]
+        if "camera_names" in attrs:
+            for value in attrs["camera_names"].list_value.values:
+                if not value.string_value:
+                    raise ValueError("camera_names must be a list of non-empty camera names")
+        deps = _camera_names_from_attrs(attrs)
         if "detector_name" in attrs and attrs["detector_name"].string_value:
             deps.append(attrs["detector_name"].string_value)
         return deps, []
@@ -330,8 +351,23 @@ class Sam3Segments(Vision, EasyResource):
                 break
         return kept_dets, kept_masks
 
-    async def _get_color_and_depth(self) -> Tuple[ViamImage, np.ndarray, np.ndarray]:
-        images, _ = await self._camera.get_images()
+    def _resolve_camera(self, camera_name: str) -> Tuple[str, ResourceBase]:
+        """Map a requested camera name to a configured camera.
+        An empty name means the default camera_name."""
+        if not camera_name:
+            return self._camera_name, self._camera
+        camera = self._cameras.get(camera_name)
+        if camera is None:
+            raise ValueError(
+                f"Camera '{camera_name}' is not configured. Add it to camera_names "
+                f"(configured: {', '.join(self._cameras)})."
+            )
+        return camera_name, camera
+
+    async def _get_color_and_depth(
+        self, camera: ResourceBase
+    ) -> Tuple[ViamImage, np.ndarray, np.ndarray]:
+        images, _ = await camera.get_images()
         color_img = None
         depth_img = None
         for img in images:
@@ -425,19 +461,21 @@ class Sam3Segments(Vision, EasyResource):
             self._robot_client = await _connect_to_machine()
         return self._robot_client
 
-    async def _transform_points_to_world(self, points_mm: np.ndarray) -> Tuple[np.ndarray, str]:
+    async def _transform_points_to_world(
+        self, points_mm: np.ndarray, camera_name: str
+    ) -> Tuple[np.ndarray, str]:
         client = await self._ensure_robot_client()
         if client is None:
-            return points_mm, self._camera_name
+            return points_mm, camera_name
         try:
             origin = PoseInFrame(
-                reference_frame=self._camera_name,
+                reference_frame=camera_name,
                 pose=Pose(x=0, y=0, z=0, o_x=0, o_y=0, o_z=1, theta=0),
             )
             world_pose_in_frame = await client.transform_pose(origin, "world")
             p = world_pose_in_frame.pose
             LOGGER.debug(
-                f"Frame transform {self._camera_name} -> world: "
+                f"Frame transform {camera_name} -> world: "
                 f"translation=({p.x:.1f},{p.y:.1f},{p.z:.1f})mm "
                 f"OV=({p.o_x:.4f},{p.o_y:.4f},{p.o_z:.4f}) theta={p.theta:.4f}"
             )
@@ -450,7 +488,7 @@ class Sam3Segments(Vision, EasyResource):
             return transformed, "world"
         except Exception as e:
             LOGGER.warn(f"Could not transform to world frame: {e}")
-            return points_mm, self._camera_name
+            return points_mm, camera_name
 
     async def _prompt_image(self, image: ViamImage) -> Tuple[List[RawDetection], List[np.ndarray]]:
         color_np = viam_image_to_numpy(image)
@@ -464,17 +502,20 @@ class Sam3Segments(Vision, EasyResource):
         extra: Optional[Mapping[str, ValueTypes]] = None,
         timeout: Optional[float] = None,
     ) -> List[PointCloudObject]:
-        props = await self._camera.get_properties()
+        camera_name, camera = self._resolve_camera(camera_name)
+        props = await camera.get_properties()
         intrinsics = props.intrinsic_parameters
         if intrinsics is None:
-            raise ValueError("Camera must provide intrinsic parameters for 3D projection")
+            raise ValueError(
+                f"Camera '{camera_name}' must provide intrinsic parameters for 3D projection"
+            )
         fx = intrinsics.focal_x_px
         fy = intrinsics.focal_y_px
         ppx = intrinsics.center_x_px
         ppy = intrinsics.center_y_px
-        LOGGER.debug(f"Intrinsics: fx={fx}, fy={fy}, ppx={ppx}, ppy={ppy}")
+        LOGGER.debug(f"Intrinsics for {camera_name}: fx={fx}, fy={fy}, ppx={ppx}, ppy={ppy}")
 
-        color_viam, color_np, depth_np = await self._get_color_and_depth()
+        color_viam, color_np, depth_np = await self._get_color_and_depth(camera)
         dets, masks = await self._prompt_image(color_viam)
         LOGGER.debug(f"SAM3 text prompt {self._label!r} returned {len(dets)} instance(s)")
 
@@ -497,7 +538,7 @@ class Sam3Segments(Vision, EasyResource):
                 f"Segment '{label}': {len(points)} pts, "
                 f"camera frame center=({cam_center[0]:.0f},{cam_center[1]:.0f},{cam_center[2]:.0f})mm"
             )
-            points, ref_frame = await self._transform_points_to_world(points)
+            points, ref_frame = await self._transform_points_to_world(points, camera_name)
             world_center = points.mean(axis=0)
             LOGGER.debug(
                 f"  -> {ref_frame} frame center="
@@ -505,7 +546,9 @@ class Sam3Segments(Vision, EasyResource):
             )
             results.append(self._build_point_cloud_object(points, colors, label, ref_frame))
             if self._debug:
-                points_raw_world, raw_ref_frame = await self._transform_points_to_world(points_raw)
+                points_raw_world, raw_ref_frame = await self._transform_points_to_world(
+                    points_raw, camera_name
+                )
                 results.append(
                     self._build_point_cloud_object(
                         points_raw_world, colors_raw, f"debug_{label}_before_cleaning", raw_ref_frame
@@ -537,7 +580,8 @@ class Sam3Segments(Vision, EasyResource):
         extra: Optional[Mapping[str, ValueTypes]] = None,
         timeout: Optional[float] = None,
     ) -> List[Detection]:
-        images, _ = await self._camera.get_images()
+        _, camera = self._resolve_camera(camera_name)
+        images, _ = await camera.get_images()
         if not images:
             return []
         return await self.get_detections(images[0], extra=extra, timeout=timeout)
@@ -553,12 +597,9 @@ class Sam3Segments(Vision, EasyResource):
         extra: Optional[Mapping[str, ValueTypes]] = None,
         timeout: Optional[float] = None,
     ) -> CaptureAllResult:
-        if camera_name not in (self._camera_name, ""):
-            raise ValueError(
-                f"Camera name '{camera_name}' does not match configured camera '{self._camera_name}'."
-            )
+        camera_name, camera = self._resolve_camera(camera_name)
         result = CaptureAllResult()
-        images, _ = await self._camera.get_images()
+        images, _ = await camera.get_images()
         if not images:
             return result
         color_viam = images[0]
@@ -627,6 +668,7 @@ class Sam3Segments(Vision, EasyResource):
             return {
                 "detector_name": self._detector_name,
                 "camera_name": self._camera_name,
+                "camera_names": list(self._cameras),
                 "label": self._label,
                 "confidence_threshold": self._confidence_threshold,
                 "model_name": SAM3_MODEL_ID,
