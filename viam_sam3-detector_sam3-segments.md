@@ -32,6 +32,7 @@ Unlike `sam2-segments`, this model does **not** need an upstream 2D detector or 
 | Name | Type | Inclusion | Description |
 |---|---|---|---|
 | `camera_name` | string | **Required** | Name of the RGBD camera that provides both color and depth images. Added as a required dependency. |
+| `camera_names` | string[] | Optional | Additional RGBD cameras this service can segment from, selected by the `camera_name` argument of each API call. Each is added as a dependency. One loaded SAM3 model serves them all. |
 | `label` | string | **Required** | Open-vocabulary text prompt used as the SAM3 query. Default is not applied — you must set this. |
 | `detector_name` | string | Optional | If set, SAM3 instances that do not overlap a detection from this vision service are discarded. |
 | `confidence_threshold` | float | Optional | Minimum SAM3 (and optional upstream) score. Default: `0.5`. |
@@ -53,11 +54,32 @@ Unlike `sam2-segments`, this model does **not** need an upstream 2D detector or 
 }
 ```
 
+### Multiple cameras
+
+To run one SAM3 model against several RGBD cameras, list them in `camera_names`:
+
+```json
+{
+  "camera_name": "cam",
+  "camera_names": ["cam", "other-rgbd-cam"],
+  "label": "chip bag"
+}
+```
+
+Then pass the camera you want to each call. An empty name uses `camera_name`:
+
+```python
+await sam3.get_object_point_clouds("other-rgbd-cam")
+await sam3.get_object_point_clouds("")  # uses "cam"
+```
+
+Intrinsics, color and depth images, and the world-frame transform all come from the requested camera. A camera that isn't in `camera_name` or `camera_names` returns an error. Every listed camera must return both color and depth from `get_images()` and report intrinsics.
+
 ## Supported API methods
 
 ### `get_object_point_clouds(camera_name)`
 
-Returns a list of `PointCloudObject` — one for each text-prompted instance. Each contains:
+Uses `camera_name` if it is configured (see [Multiple cameras](#multiple-cameras)); an empty string uses the default camera. Returns a list of `PointCloudObject` — one for each text-prompted instance. Each contains:
 - `point_cloud`: PCD binary data (XYZRGB format, coordinates in meters)
 - `geometries`: 3D bounding box geometry with label (dimensions in mm)
 
